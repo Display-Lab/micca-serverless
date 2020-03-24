@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#TODO
+#TODO Build
 # Vendorize gem requirements
 # Create layer with gem requirements built in appropriate docker image 
 
