@@ -1,0 +1,9 @@
+.ruby-gemset
+.ruby-version
+
+# Build artifacts
+.bundle/*
+serverless-output.yaml
+sinapp/vendor/*
+vendor/*
+
