@@ -6,4 +6,5 @@
 serverless-output.yaml
 sinapp/vendor/*
 vendor/*
+sinapp/.bundle/*
 

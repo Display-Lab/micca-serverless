@@ -5,9 +5,11 @@ SINAPP_STACK=${SINAPP_BUCKET:-sinatra-stack}
 
 
 echo "Teardown"
-# TODO: Clean out and buckets that need cleaning.
-# Back up any data that needs backing.
 
+# Delete the layer and the app zips
+aws s3 rm --recursive s3://${SINAPP_BUCKET}
+
+# Back up any data that needs backing.
 
 echo "Delete Stack"
 aws cloudformation delete-stack --stack-name $SINAPP_STACK
