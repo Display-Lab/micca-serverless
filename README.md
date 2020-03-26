@@ -1,4 +1,18 @@
+# Serverless Sinatra App
+
+Base project is the deployment wrapper around a sinatra application in the sinapp dir
+
+Plan is to:
+1. Develop the deployment and wiring strategy in this project.
+2. Develop the application under the sinapp directory.
+
+## My notes
+
+- Deployment as is works.
+- Using bucket sinatra-sam-demo
+
 ## Running Ruby Sinatra on AWS Lambda
+Originally from: git@github.com:aws-samples/serverless-sinatra-sample
 
 This sample code helps get you started with a simple Sinatra web app deployed on AWS Lambda. It is tested with Ruby 2.5.x and bundler-1.17.x. 
 

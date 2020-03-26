@@ -11,9 +11,11 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref FeedbackTable
-      CodeUri: "./"
+      CodeUri: "./sinapp"
       MemorySize: 512
       Timeout: 30
+      Layers:
+        - !Ref SinatraDependsLayer
       Events:
         SinatraApi:
             Type: Api
@@ -21,6 +23,16 @@ Resources:
                 Path: /
                 Method: ANY
                 RestApiId: !Ref SinatraAPI
+  SinatraDependsLayer:
+      Type: AWS::Serverless::LayerVersion
+      Properties:
+          LayerName: sinatra-dependencies
+          Description: Gems for Sinatra application
+          ContentUri: vendor/bundle/
+          CompatibleRuntimes:
+            - ruby2.5
+          LicenseInfo: 'MIT'
+          RetentionPolicy: Delete
   SinatraAPI:
     Type: AWS::Serverless::Api
     Properties:
