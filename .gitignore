@@ -1,6 +1,9 @@
 .ruby-gemset
 .ruby-version
 
+# Application specific configuration
+samconfig.toml
+
 # Build artifacts
 .bundle/*
 serverless-output.yaml

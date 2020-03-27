@@ -1,7 +1,30 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
 
+Parameters:
+  MainDomainName:
+    Type: String
+    Description: Second and top level domain. e.g. example.com
+
+  AppStage:
+    Type: String
+    Default: example
+    Description: deployment stage and subdomain
+
+  DNSCertArn:
+    Type: String
+    Description: Arn of certificate of custom domain
+
+  ZoneId:
+    Type: String
+    Description: Hosted zone id of the custom domain
+
 Resources:
+
+  ##########################
+  # Serverless API Lambdas #
+  ##########################
+  
   SinatraFunction:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -33,14 +56,27 @@ Resources:
             - ruby2.5
           LicenseInfo: 'MIT'
           RetentionPolicy: Delete
+
+  ################################
+  # Serverless API Configuration #
+  ################################
+
   SinatraAPI:
     Type: AWS::Serverless::Api
     Properties:
       Name: SinatraAPI
-      StageName: Prod
+      StageName: !Ref AppStage
+      EndpointConfiguration: REGIONAL
+      Domain:
+        DomainName: !Sub ${AppStage}.${MainDomainName}
+        CertificateArn: !Ref DNSCertArn 
+        Endpointconfiguration: REGIONAL
+        Route53:
+          HostedZoneId: !Ref ZoneId
+          EvaluateTargetHealth: false
       DefinitionBody:
         swagger: '2.0'
-        basePath: '/Prod'
+        basePath: '/basepathignored'
         info:
           title: !Ref AWS::StackName
         paths:
@@ -70,6 +106,11 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref SinatraFunction
       Principal: apigateway.amazonaws.com
+
+  ####################
+  # Database Backing #
+  ####################
+
   FeedbackTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
@@ -83,4 +124,4 @@ Resources:
 Outputs:
   SinatraAppUrl:
     Description: App endpoint URL
-    Value: !Sub "https://${SinatraAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+    Value: !Sub "https://${SinatraAPI}.execute-api.${AWS::Region}.amazonaws.com/${AppStage}/"
