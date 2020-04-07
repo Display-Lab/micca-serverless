@@ -14,3 +14,6 @@ aws s3 rm --recursive s3://${SINAPP_BUCKET}
 echo "Delete Stack"
 aws cloudformation delete-stack --stack-name $SINAPP_STACK
 
+echo "Waiting for stack deletion"
+aws cloudformation wait stack-delete-complete --stack-name $SINAPP_STACK
+
