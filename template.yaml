@@ -1,5 +1,13 @@
+---
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
+Description: >
+  Sinatra SAM Demonstration
+  Uses external resources that will not be managed by the stack.
+
+Globals:
+  Function:
+    Timeout: 5
 
 Parameters:
   MainDomainName:
@@ -19,7 +27,23 @@ Parameters:
     Type: String
     Description: Hosted zone id of the custom domain
 
+  AuthName:
+    Type: String
+    Default: CogDemo
+    Description: Unique Auth Name for Cognito Resources
+
+  ExtUserPoolId:
+    Type: String
+    Default: "not-provided"
+    Description: ARN of external UserPool 
+
+Conditions:
+  UseInternalPool: !Equals [ !Ref ExtUserPoolId, "not-provided" ]
+  UseExternalPool: !Not [ !Equals [ !Ref ExtUserPoolId, "not-provided" ] ]
+
 Resources:
+
+  # Cognito User Pool Setup #
 
   ##########################
   # Serverless API Lambdas #
@@ -31,6 +55,10 @@ Resources:
       FunctionName: SinatraApp
       Handler: lambda.handler
       Runtime: ruby2.5
+      Environment:
+        Variables:
+          ClientId: !GetAtt UPClientInfo.UserPoolId
+          ClientSecret: !GetAtt UPClientInfo.ClientSecret
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref FeedbackTable
@@ -46,6 +74,7 @@ Resources:
                 Path: /
                 Method: ANY
                 RestApiId: !Ref SinatraAPI
+
   SinatraDependsLayer:
       Type: AWS::Serverless::LayerVersion
       Properties:
@@ -98,6 +127,7 @@ Resources:
                 passthroughBehavior: "when_no_match"
                 httpMethod: POST
                 type: "aws_proxy"
+
   ConfigLambdaPermission:
     Type: "AWS::Lambda::Permission"
     DependsOn:
@@ -121,7 +151,146 @@ Resources:
       ProvisionedThroughput: 
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
+
+  #
+  # Cognito Identity Provider 
+  #
+
+  InternalUserPool:
+    Type: AWS::Cognito::UserPool
+    Condition: UseInternalPool
+    Properties:
+      UserPoolName: !Sub ${AuthName}-user-pool
+      UserNameAttributes: email
+      AdminCreateUserConfig:
+          AllowAdminCreateUserOnly: true
+          InviteMessageTemplate: 
+            EmailSubject: "Welcome to Demo MICCA"
+            EmailMessage: "You have been designated as a user of the MICCA project. {username} {####}"
+          UnusedAccountValidityDays: 60
+      MfaConfiguration: "OFF"
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: false
+          Required: true
+        - Name: site
+          AttributeDateType: String
+          Mutable: false
+          Required: true
+
+  InternalUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ${AuthName}-client
+      GenerateSecret: true
+      UserPoolId: !If [ UseInternalPool, !Ref InternalUserPool, !Ref ExtUserPoolId ]
+
+  #
+  # Lambda used to get UserPoolClient generated secret
+  #
+  
+  # Policy to allow access to logs and cognito-identity
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+          - Effect: Allow
+            Action:
+              - cognito-idp:*
+              - cognito-idp:DescribeUserPoolClient
+            Resource: arn:aws:cognito-idp:*:*:*
+
+  GetUserPoolClientSecret:
+    Type: AWS::Lambda::Function
+    Properties: 
+      Description: Look up secret from UserPoolClient 
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: "python3.7"
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          import logging
+          
+          def handler(event, context):
+            logger = logging.getLogger()
+            logger.setLevel(logging.INFO)
+            
+            # initialize our responses, assume failure by default
+            
+            response_data = {}
+            response_status = cfnresponse.FAILED
+            
+            logger.info('Received event: {}'.format(json.dumps(event)))
+            
+            if event['RequestType'] == 'Delete':
+              response_status = cfnresponse.SUCCESS
+              cfnresponse.send(event, context, response_status, response_data)
+              return None
+            
+            try:
+              cognito=boto3.client('cognito-idp')
+            except Exception as e:
+              logger.info('boto3.client failure: {}'.format(e)) # appease yaml highlighting'
+              cfnresponse.send(event, context, response_status, response_data)
+              return None
+            
+            user_pool_id = event['ResourceProperties']['UserPoolId']
+            client_id = event['ResourceProperties']['ClientId']
+
+            try:
+              user_pool_client = cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
+            except Exception as e:
+              logger.info('cognito.describe_user_pool_client failure: {}'.format(e)) # appease yaml highlighting'
+              cfnresponse.send(event, context, response_status, response_data)
+              return None
+
+            client_secret = user_pool_client['UserPoolClient']['ClientSecret']
+            response_data['ClientSecret'] = client_secret
+            response_data['UserPoolId'] = user_pool_id
+
+            response_status = cfnresponse.SUCCESS
+            cfnresponse.send(event, context, response_status, response_data, noEcho=True)
+
+  #
+  # Custom Resource to hold client secret
+  #
+  UPClientInfo:
+    Type: Custom::UserPoolClientInfo
+    Properties:
+      ServiceToken: !GetAtt GetUserPoolClientSecret.Arn
+      UserPoolId: !If [ UseInternalPool, !Ref InternalUserPool, !Ref ExtUserPoolId ]
+      ClientId: !Ref InternalUserPoolClient
+
 Outputs:
   SinatraAppUrl:
     Description: App endpoint URL
     Value: !Sub "https://${SinatraAPI}.execute-api.${AWS::Region}.amazonaws.com/${AppStage}/"
+  UserPoolId:
+    Description: "The UserPoolClient being used by this stack"
+    Value: !GetAtt UPClientInfo.UserPoolId
