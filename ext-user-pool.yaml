@@ -1,0 +1,58 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: >
+  UserPool definition separate from the main stack.
+  The user pool will be more long lived than the main stack.
+
+Resources:
+
+  #
+  # Cognito User Pool for Authentication 
+  #
+  # Externally defined because we can't have a retention policy on UserPools.
+  #   which is problematic for redeploying the stack.
+
+  ExternalUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties: 
+      AccountRecoverySetting: 
+        AccountRecoverySetting
+      AdminCreateUserConfig:
+          AllowAdminCreateUserOnly: true
+          InviteMessageTemplate: 
+            EmailSubject: "MICCA IPLARC Reporting Login Information"
+            EmailMessage: "You have been designated as a user of the MICCA project. {username} {####}"
+          UnusedAccountValidityDays: 60
+      AutoVerifiedAttributes: 
+        - email
+      DeviceConfiguration: 
+        ChallengeRequiredOnNewDevice: false
+        DeviceOnlyRememberedOnUserPrompt: true
+      EmailVerificationMessage: "Email verification code for MICCA IPLARC reporting {####}"
+      EmailVerificationSubject: "Verification for MICCA IPLARC"
+      MfaConfiguration: "OFF"
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: false
+          Required: true
+        - Name: site
+          AttributeDateType: String
+          Mutable: false
+          Required: true
+      UsernameAttributes: 
+        - email
+      UsernameConfiguration: 
+        UsernameConfiguration
+      UserPoolAddOns: 
+        UserPoolAddOns
+      UserPoolName: micca-user-pool
+      UserPoolTags: '{"project":"micca","stage":"prod"}'
+
+Outputs:
+  UserPoolId:
+    Description: "The UserPoolId created by this stack"
+    Value: !Ref ExternalUserPool
+    Export:
+      Name: ExtMiccaUserPoodId

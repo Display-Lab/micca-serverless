@@ -21,7 +21,7 @@ Parameters:
 
   DNSCertArn:
     Type: String
-    Description: Arn of certificate of custom domain
+    Description: Arn of certificate of custom domain to cover app and auth domains
 
   ZoneId:
     Type: String
@@ -39,11 +39,8 @@ Parameters:
 
 Conditions:
   UseInternalPool: !Equals [ !Ref ExtUserPoolId, "not-provided" ]
-  UseExternalPool: !Not [ !Equals [ !Ref ExtUserPoolId, "not-provided" ] ]
 
 Resources:
-
-  # Cognito User Pool Setup #
 
   ##########################
   # Serverless API Lambdas #
@@ -57,8 +54,12 @@ Resources:
       Runtime: ruby2.5
       Environment:
         Variables:
-          ClientId: !GetAtt UPClientInfo.UserPoolId
-          ClientSecret: !GetAtt UPClientInfo.ClientSecret
+          POOL_ID: !GetAtt UPClientInfo.UserPoolId
+          CLIENT_ID: !GetAtt UPClientInfo.ClientId
+          CLIENT_SECRET: !GetAtt UPClientInfo.ClientSecret
+          COGNITO_USER_POOL_SITE: !Sub auth.${MainDomainName}
+          COGNITO_USER_POOL_ID: !If [ UseInternalPool, !Ref InternalUserPool, !Ref ExtUserPoolId ]
+          DOMAIN: !Sub ${AppStage}.${MainDomainName}
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref FeedbackTable
@@ -153,7 +154,7 @@ Resources:
         WriteCapacityUnits: 5
 
   #
-  # Cognito Identity Provider 
+  # Cognito User Pool for Authentication 
   #
 
   InternalUserPool:
@@ -179,12 +180,42 @@ Resources:
           Mutable: false
           Required: true
 
-  InternalUserPoolClient:
+  # Requires an A record that points at either another record or something extant.
+  #   Do not point at a defunct application stack.
+  AuthSubDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties: 
+      CustomDomainConfig: 
+        CertificateArn: !Ref DNSCertArn 
+      Domain: auth.inference.es
+      UserPoolId: !If [ UseInternalPool, !Ref InternalUserPool, !Ref ExtUserPoolId ]
+
+  UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       ClientName: !Sub ${AuthName}-client
       GenerateSecret: true
       UserPoolId: !If [ UseInternalPool, !Ref InternalUserPool, !Ref ExtUserPoolId ]
+      CallbackURLs:
+        - !Sub "https://${AppStage}.${MainDomainName}/auth/cognito-idp/callback"
+        - !Sub "https://${AppStage}.${MainDomainName}/dashboard"
+      DefaultRedirectURI: !Sub "https://${AppStage}.${MainDomainName}/auth/cognito-idp/callback"
+      SupportedIdentityProviders: 
+        - COGNITO
+      ReadAttributes:
+        - email
+        - "custom:site"
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH 
+        - ALLOW_REFRESH_TOKEN_AUTH
+      AllowedOAuthScopes:
+        - email
+        - profile
+        - openid
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - implicit
 
   #
   # Lambda used to get UserPoolClient generated secret
@@ -219,6 +250,7 @@ Resources:
             Action:
               - cognito-idp:*
               - cognito-idp:DescribeUserPoolClient
+              - cognito-idp:DescribeUserPoolDomain
             Resource: arn:aws:cognito-idp:*:*:*
 
   GetUserPoolClientSecret:
@@ -273,6 +305,7 @@ Resources:
             client_secret = user_pool_client['UserPoolClient']['ClientSecret']
             response_data['ClientSecret'] = client_secret
             response_data['UserPoolId'] = user_pool_id
+            response_data['ClientId'] = client_id
 
             response_status = cfnresponse.SUCCESS
             cfnresponse.send(event, context, response_status, response_data, noEcho=True)
@@ -285,7 +318,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt GetUserPoolClientSecret.Arn
       UserPoolId: !If [ UseInternalPool, !Ref InternalUserPool, !Ref ExtUserPoolId ]
-      ClientId: !Ref InternalUserPoolClient
+      ClientId: !Ref UserPoolClient
 
 Outputs:
   SinatraAppUrl:
@@ -294,3 +327,9 @@ Outputs:
   UserPoolId:
     Description: "The UserPoolClient being used by this stack"
     Value: !GetAtt UPClientInfo.UserPoolId
+  ApplicationUrl:
+    Description: "User facing domain name served by the app"
+    Value: !Sub "https://${AppStage}.${MainDomainName}"
+  AuthDomain:
+    Description: Authorization domain of cognito user pool client
+    Value: !Sub auth.${MainDomainName}

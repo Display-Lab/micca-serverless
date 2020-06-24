@@ -1,8 +1,37 @@
 require 'rack'
 require 'rack/contrib'
-require_relative './server'
+require 'rack/utils'
+require 'rack/session/pool'
+require 'omniauth-cognito-idp'
 
-set :root, File.dirname(__FILE__)
-set :views, Proc.new { File.join(root, "views") }
+# Definition of our app
+require_relative 'server'
 
-run Sinatra::Application
+##########################################
+# Dummy data for quick-dirty local test
+##########################################
+
+ENV['CLIENT_ID'] ||= 'dummy'
+ENV['CLIENT_SECRET'] ||= 'dummy'
+ENV['COGNITO_USER_POOL_SITE'] ||= 'example.com'
+ENV['COGNITO_USER_POOL_ID'] ||= 'dummy'
+ENV['AWS_REGION'] ||= 'dummy'
+
+# Should probably die without a cookie secret
+ENV['COOKIE_SECRET'] ||= 'TheWorstKeptDEADBEEF'
+ENV['DOMAIN'] ||= 'localhost'
+
+
+# OmniAuth requires session support
+use Rack::Session::Cookie, secret: ENV['COOKIE_SECRET'], domain: ENV['DOMAIN']
+
+use OmniAuth::Strategies::CognitoIdP,
+  ENV['CLIENT_ID'],
+  ENV['CLIENT_SECRET'],
+  client_options: { site: "https://#{ENV['COGNITO_USER_POOL_SITE']}",
+                    authorize_url: 'https://auth.inference.es/login' },
+  scope: 'email openid profile aws.cognito.signin.user.admin',
+  user_pool_id: ENV['COGNITO_USER_POOL_ID'],
+  aws_region: ENV['AWS_REGION']
+
+run SinApp

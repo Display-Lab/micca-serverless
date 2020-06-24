@@ -11,3 +11,6 @@ sinapp/vendor/*
 vendor/*
 sinapp/.bundle/*
 
+# Convenience script for running locally
+sinapp/app/local.sh
+

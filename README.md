@@ -8,8 +8,15 @@ Plan is to:
 
 ## My notes
 
-- Deployment as is works.
 - Using bucket sinatra-sam-demo
+- Stuff template parameters in samconfig.toml
+- Requires custom domain to provide callback URIs
+- Need to manually add the alias record for the auth subdomain to the cloudfront distribution.
+- Need to create the Cognito User Pool independently of the stack
+- No way to back up Cognito User Pool
+
+- Need to build and bundle the application locally to handle native compiled gems.
+    `build_dependencies.sh` runs `bundling.sh` in a docker container that approximates AWS lambda container.
 
 ## Running Ruby Sinatra on AWS Lambda
 Originally from: git@github.com:aws-samples/serverless-sinatra-sample
