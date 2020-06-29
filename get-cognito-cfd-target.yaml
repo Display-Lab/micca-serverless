@@ -1,0 +1,136 @@
+---
+
+#
+# This template example assumes a UserPool and UserPoolDomain exist.
+# The function of this is to produce a custom resource with an attribute 
+#   that can be referenced for DNSName of an Route53::RecordSet AliasTarget. 
+#   
+#   AliasTarget:
+#     HostedZone: Z2FDTNDATAQYW2
+#     DNSNAME: !GetAtt UPDomain.CloudFrontDistribution
+#
+# Run from CLI:
+#   aws cloudformation create-stack --template-body file://get-cognito-cfd-target.yaml \
+#     --stack-name LambdaGetterDemo --capabilities CAPABILITY_IAM \
+#     --parameters ParameterKey=AuthDomain,ParameterValue=auth.example.com
+#
+# Clean up from CLI:
+#   aws cloudformation delete-stack --stack-name LambdaGetterDemo
+
+
+Parameters:
+  AuthDomain:
+    Type: String
+    Default: auth.example.com
+    Description: UserPool custom domain. 
+
+Resources:
+  #
+  # Lambda to get access to resource attributes cloudformation doesn't expose yet.
+  #
+  
+  # Policy to allow access to logs and cognito-identity
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+          - Effect: Allow
+            Action:
+              - cognito-idp:DescribeUserPoolDomain
+            Resource: '*'
+
+  GetUserPoolClientCFDistribution: 
+    Type: AWS::Lambda::Function
+    Properties: 
+      Description: Look up CloudFrontDistribution of UserPoolDomain 
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: "python3.7"
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          import logging
+          
+          def handler(event, context):
+            logger = logging.getLogger()
+            logger.setLevel(logging.INFO)
+            
+            # initialize our responses, assume failure by default
+            response_data = {}
+            response_status = cfnresponse.FAILED
+            
+            logger.info('Received event: {}'.format(json.dumps(event))) #'
+            
+            # When you get deleted, congratulate the deleter.
+            if event['RequestType'] == 'Delete':
+              response_status = cfnresponse.SUCCESS
+              cfnresponse.send(event, context, response_status, response_data)
+              return None
+            
+            # Make ourselves a cognito api client
+            try:
+              cognito=boto3.client('cognito-idp')
+            except Exception as e:
+              logger.info('boto3.client failure: {}'.format(e)) #'
+              cfnresponse.send(event, context, response_status, response_data)
+              return None
+            
+            # Look up the properties of the user pool domain
+            # UserPoolDomain is passed in via the event
+            user_pool_domain = event['ResourceProperties']['UserPoolDomain']
+            try:
+              user_pool_domain_info = cognito.describe_user_pool_domain(Domain=user_pool_domain)
+            except Exception as e:
+              logger.info('cognito.describe_user_pool_client failure: {}'.format(e)) # appease yaml highlighting'
+              cfnresponse.send(event, context, response_status, response_data)
+              return None
+
+            # Extract the pertient information
+            cloudfront_distribution = user_pool_domain_info['DomainDescription']['CloudFrontDistribution']
+
+            # Stuff the information into the response
+            response_data['CloudFrontDistribution'] = cloudfront_distribution
+            response_data['Foo'] = 'Bar'
+
+            # Ship off the reponse
+            response_status = cfnresponse.SUCCESS
+            cfnresponse.send(event, context, response_status, response_data, noEcho=True)
+
+  #
+  # Custom Resource to hold user pool DNS alias target for custom domain
+  #
+    # UserPoolDomain is passed in via the event
+  UPDomain:
+    Type: Custom::UserPoolCloudFrontDistribution
+    Properties:
+      ServiceToken: !GetAtt GetUserPoolClientCFDistribution.Arn
+      UserPoolDomain: !Ref AuthDomain
+
+Outputs:
+  UserPoolDomainTarget:
+    Description: "The CloudFront distribution target for A and AAAA aliases."
+    Value: !GetAtt UPDomain.CloudFrontDistribution

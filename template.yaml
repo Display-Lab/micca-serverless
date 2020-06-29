@@ -253,8 +253,8 @@ Resources:
               - cognito-idp:DescribeUserPoolDomain
             Resource: arn:aws:cognito-idp:*:*:*
 
-  GetUserPoolClientSecret:
-    Type: AWS::Lambda::Function
+  GetUserPoolClientSecret: 
+  Type: AWS::Lambda::Function
     Properties: 
       Description: Look up secret from UserPoolClient 
       Handler: index.handler
