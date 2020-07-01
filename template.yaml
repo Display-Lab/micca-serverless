@@ -153,9 +153,9 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
 
-  #
-  # Cognito User Pool for Authentication 
-  #
+  ########################################
+  # Cognito User Pool for Authentication #
+  ########################################
 
   InternalUserPool:
     Type: AWS::Cognito::UserPool
@@ -182,6 +182,7 @@ Resources:
 
   # Requires an A record that points at either another record or something extant.
   #   Do not point at a defunct application stack.
+  #   Record cannot already exist
   AuthSubDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties: 
@@ -189,6 +190,19 @@ Resources:
         CertificateArn: !Ref DNSCertArn 
       Domain: auth.inference.es
       UserPoolId: !If [ UseInternalPool, !Ref InternalUserPool, !Ref ExtUserPoolId ]
+
+  AuthDomainRecordSet:
+    Type: AWS::Route53::RecordSet
+    DependsOn: AuthSubDomain
+    Properties:
+      Name: !Sub auth.${MainDomainName} 
+      HostedZoneId: !Ref ZoneId
+      Comment: Custom auth domain for MICCA
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName: !GetAtt UPDomain.CloudFrontDistribution
+        EvaluateTargetHealth: false
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -213,16 +227,18 @@ Resources:
         - email
         - profile
         - openid
+        - aws.cognito.signin.user.admin
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthFlows:
         - implicit
+        - code
 
-  #
-  # Lambda used to get UserPoolClient generated secret
-  #
+  ###############################################################
+  # Lambdas to look up properties not exposed by CloudFormation #
+  ###############################################################
   
   # Policy to allow access to logs and cognito-identity
-  LambdaExecutionRole:
+  LambdaGetUserPoolClientRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -250,16 +266,16 @@ Resources:
             Action:
               - cognito-idp:*
               - cognito-idp:DescribeUserPoolClient
-              - cognito-idp:DescribeUserPoolDomain
             Resource: arn:aws:cognito-idp:*:*:*
 
+  # Lambda used to get UserPoolClient generated secret
   GetUserPoolClientSecret: 
-  Type: AWS::Lambda::Function
+    Type: AWS::Lambda::Function
     Properties: 
       Description: Look up secret from UserPoolClient 
       Handler: index.handler
       MemorySize: 128
-      Role: !GetAtt LambdaExecutionRole.Arn
+      Role: !GetAtt LambdaGetUserPoolClientRole.Arn
       Runtime: "python3.7"
       Timeout: 30
       Code:
@@ -310,9 +326,109 @@ Resources:
             response_status = cfnresponse.SUCCESS
             cfnresponse.send(event, context, response_status, response_data, noEcho=True)
 
-  #
+  LambdaGetUserPoolDomainRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+          - Effect: Allow
+            Action:
+              - cognito-idp:DescribeUserPoolDomain
+            Resource: '*'
+
+  GetUserPoolClientCFDistribution: 
+    Type: AWS::Lambda::Function
+    Properties: 
+      Description: Look up CloudFrontDistribution of UserPoolDomain 
+      Handler: index.handler
+      MemorySize: 128
+      Role: !GetAtt LambdaGetUserPoolDomainRole.Arn
+      Runtime: "python3.7"
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          import logging
+          
+          def handler(event, context):
+            logger = logging.getLogger()
+            logger.setLevel(logging.INFO)
+            
+            # initialize our responses, assume failure by default
+            response_data = {}
+            response_status = cfnresponse.FAILED
+            
+            logger.info('Received event: {}'.format(json.dumps(event))) #'
+            
+            # When you get deleted, congratulate the deleter.
+            if event['RequestType'] == 'Delete':
+              response_status = cfnresponse.SUCCESS
+              cfnresponse.send(event, context, response_status, response_data)
+              return None
+            
+            # Make ourselves a cognito api client
+            try:
+              cognito=boto3.client('cognito-idp')
+            except Exception as e:
+              logger.info('boto3.client failure: {}'.format(e)) #'
+              cfnresponse.send(event, context, response_status, response_data)
+              return None
+            
+            # Look up the properties of the user pool domain
+            # UserPoolDomain is passed in via the event
+            user_pool_domain = event['ResourceProperties']['UserPoolDomain']
+            try:
+              user_pool_domain_info = cognito.describe_user_pool_domain(Domain=user_pool_domain)
+            except Exception as e:
+              logger.info('cognito.describe_user_pool_client failure: {}'.format(e)) # appease yaml highlighting'
+              cfnresponse.send(event, context, response_status, response_data)
+              return None
+
+            # Extract the pertient information
+            cloudfront_distribution = user_pool_domain_info['DomainDescription']['CloudFrontDistribution']
+
+            # Stuff the information into the response
+            response_data['CloudFrontDistribution'] = cloudfront_distribution
+            response_data['Foo'] = 'Bar'
+
+            # Ship off the reponse
+            response_status = cfnresponse.SUCCESS
+            cfnresponse.send(event, context, response_status, response_data, noEcho=True)
+
+
+  ################################################
+  # Custom Resources to hold Lambda derived info #
+  ################################################
+  
+  # Custom Resource to hold user pool DNS alias target for custom domain
+  UPDomain:
+    Type: Custom::UserPoolCloudFrontDistribution
+    Properties:
+      ServiceToken: !GetAtt GetUserPoolClientCFDistribution.Arn
+      UserPoolDomain: !Sub auth.${MainDomainName}
+
   # Custom Resource to hold client secret
-  #
   UPClientInfo:
     Type: Custom::UserPoolClientInfo
     Properties:
@@ -333,3 +449,6 @@ Outputs:
   AuthDomain:
     Description: Authorization domain of cognito user pool client
     Value: !Sub auth.${MainDomainName}
+  UserPoolDomainTarget:
+    Description: "The CloudFront distribution target for A and AAAA aliases."
+    Value: !GetAtt UPDomain.CloudFrontDistribution
