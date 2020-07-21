@@ -45,6 +45,29 @@ class SinApp < Sinatra::Base
     cognito_idp_client.to_json
   end
 
+  get '/redir' do
+    <<-HTML
+    <html>
+      <head>
+        <title>Cognito IdP Test</title>
+      </head>
+      <body>
+        <h2> DEBUG: request env </h2>
+        <pre>#{request.env&.pretty_inspect}</pre>
+
+        <h2> Session </h2>
+        <pre>#{session.to_hash.to_json}</pre>
+
+        <h2>Links</h2>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/userinfo">Userinfo</a></li>
+        </ul>
+      </body>
+    </html>
+    HTML
+  end
+
   ##################################
   # Return a Hello world JSON
   ##################################
@@ -201,45 +224,25 @@ class SinApp < Sinatra::Base
   end
 
   # This does the login? or after the call to the idp login?
-  # This is the callback uri that need to be provided to cognito ?
-  #   /auth/cognito-idp/callback ?
+  # This is the callback uri that need to be provided to cognito
+  #   /auth/cognito-idp/callback
   #   Omniauth provides the /auth/cognito-idp endpoint? yes.
   #     What to pass to it? email and password?
-  #get '/auth/:provider/callback' do
-  get '/auth/old/callback' do
-    auth = request.env['omniauth.auth']
-
-    session[:auth] = auth
-
-    <<-HTML
-    <html>
-      <head>
-        <title>Cognito IdP Test</title>
-      </head>
-      <body>
-        <h1>Authenticated with #{params[:name]}</h1>
-        <h2>Authentication Object</h2>
-        <pre>#{auth&.pretty_inspect}</pre>
-
-        <h2> DEBUG: request env </h2>
-        <pre>#{request.env&.pretty_inspect}</pre>
-
-        <h2>Links</h2>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/userinfo">Userinfo</a></li>
-        </ul>
-      </body>
-    </html>
-    HTML
-  end
-
   get '/auth/:provider/callback' do
-    "called us back"
+    # Set the session auth
+    auth = request.env['omniauth.auth']
+    session[:auth] = auth
+    session[:foo] = {:bar => "bazbaq"}
+    foo = session[:foo]
+
+    redirect '/redir'
   end
+
+  #get '/auth/:provider/callback' do
+  #  "called us back"
+  #end
 
   get '/auth/failure' do
-
     <<-HTML
     <html>
       <head>
@@ -248,6 +251,9 @@ class SinApp < Sinatra::Base
       <body>
         <h2> DEBUG: request env </h2>
         <pre>#{request.env&.pretty_inspect}</pre>
+
+        <h2> Session </h2>
+        <pre>#{session.to_hash.to_json}</pre>
       </body>
     HTML
   end

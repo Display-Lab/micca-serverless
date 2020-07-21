@@ -1,7 +1,7 @@
 require 'rack'
 require 'rack/contrib'
 require 'rack/utils'
-require 'rack/session/pool'
+require 'rack/session/cookie'
 require 'omniauth-cognito-idp'
 
 # Definition of our app
@@ -23,7 +23,12 @@ ENV['DOMAIN'] ||= 'localhost'
 
 
 # OmniAuth requires session support
-use Rack::Session::Cookie, secret: ENV['COOKIE_SECRET'], domain: ENV['DOMAIN']
+use Rack::Session::Cookie, 
+  :secret => ENV['COOKIE_SECRET'],
+  #:domain => ENV['DOMAIN'],
+  :key => 'rack.session',
+  :path => '/',
+  :expire_after => 86400
 
 use OmniAuth::Strategies::CognitoIdP,
   ENV['CLIENT_ID'],
