@@ -3,6 +3,7 @@ require 'sinatra/base'
 require 'aws-sdk-cognitoidentityprovider'
 require 'aws-record'
 require 'pp'
+require 'date'  
 
 class SinApp < Sinatra::Base
   configure :production, :development do
@@ -41,22 +42,37 @@ class SinApp < Sinatra::Base
   end
 
   get '/dbg' do
-    content_type :json
-    cognito_idp_client.to_json
+    session[:dbg] = DateTime.now.to_s
+    <<-HTML
+    <html>
+      <head>
+        <title>DBG</title>
+      </head>
+      <body>
+        <h2> Session </h2>
+        <pre>#{session.to_hash&.pretty_inspect}</pre>
+
+        <h2> DEBUG: request env </h2>
+        <pre>#{request.env&.pretty_inspect}</pre>
+
+      </body>
+    </html>
+    HTML
   end
 
   get '/redir' do
+    session[:redir] = DateTime.now.to_s
     <<-HTML
     <html>
       <head>
         <title>Cognito IdP Test</title>
       </head>
       <body>
+        <h2> Session </h2>
+        <pre>#{session.to_hash&.pretty_inspect}</pre>
+
         <h2> DEBUG: request env </h2>
         <pre>#{request.env&.pretty_inspect}</pre>
-
-        <h2> Session </h2>
-        <pre>#{session.to_hash.to_json}</pre>
 
         <h2>Links</h2>
         <ul>
@@ -230,12 +246,42 @@ class SinApp < Sinatra::Base
   #     What to pass to it? email and password?
   get '/auth/:provider/callback' do
     # Set the session auth
-    auth = request.env['omniauth.auth']
+    # Trim auth hash to get under 4k limit for cookie size. 
+    #   Drop id token (JWT).  The info is in extra already.
+    #   Drop refresh_token.  This limits auth to 1 hour.
+    auth = request.env['omniauth.auth'].tap do |i|
+      i['credentials'].tap do |j|
+        j.delete('id_token')
+        j.delete('refresh_token')
+      end
+    end
+    
     session[:auth] = auth
-    session[:foo] = {:bar => "bazbaq"}
-    foo = session[:foo]
 
-    redirect '/redir'
+    <<-HTML
+    <html>
+      <head>
+        <title>Cognito IdP Test</title>
+      </head>
+      <body>
+        <h1>Authenticated with #{params[:name]}</h1>
+        <h2>Authentication Object</h2>
+        <pre>#{auth&.pretty_inspect}</pre>
+
+        <h2> DEBUG: request env </h2>
+        <pre>#{request.env&.pretty_inspect}</pre>
+
+        <h2> Session </h2>
+        <pre>#{session.to_hash.to_json}</pre>
+
+        <h2>Links</h2>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/userinfo">Userinfo</a></li>
+        </ul>
+      </body>
+    </html>
+    HTML
   end
 
   #get '/auth/:provider/callback' do
