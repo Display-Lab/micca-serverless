@@ -18,6 +18,7 @@ GEM
       aws-sigv4 (~> 1.1)
     aws-sigv4 (1.2.0)
       aws-eventstream (~> 1, >= 1.0.2)
+    coderay (1.1.3)
     diff-lcs (1.3)
     faraday (1.0.1)
       multipart-post (>= 1.2, < 3)
@@ -25,6 +26,7 @@ GEM
     jmespath (1.4.0)
     json (2.3.0)
     jwt (2.2.1)
+    method_source (1.0.0)
     multi_json (1.14.1)
     multi_xml (0.6.0)
     multipart-post (2.1.1)
@@ -45,6 +47,9 @@ GEM
     omniauth-oauth2 (1.6.0)
       oauth2 (~> 1.1)
       omniauth (~> 1.9)
+    pry (0.13.1)
+      coderay (~> 1.1)
+      method_source (~> 1.0)
     rack (2.2.3)
     rack-contrib (2.2.0)
       rack (~> 2.0)
@@ -84,6 +89,7 @@ DEPENDENCIES
   aws-sdk-cognitoidentityprovider
   json
   omniauth-cognito-idp (~> 0.1.1)
+  pry
   rack
   rack-contrib
   rack-test

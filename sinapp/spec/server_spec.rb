@@ -1,56 +1,47 @@
 require 'spec_helper'
 
 # Tests for server.rb
-describe 'HelloWorld Service' do
+describe SinApp do
   include Rack::Test::Methods
 
-  # Test for HTTP GET for URL-matching pattern '/'
-  it "should return successfully on GET" do
-    get '/hello-world'
-    expect(last_response).to be_ok
-    json_result = JSON.parse(last_response.body)
-    expect(json_result["Output"]).to eq("Hello World!")
+  context "GET index page" do
+    let(:resp){ get '/' }
+
+    it "have an index page" do
+      get '/'
+      expect(resp).to be_ok
+    end
+
+    it "have a link to sign in on index page" do
+      get '/'
+      expect(resp.body).to include('<a href="/auth/cognito-idp">')
+    end
   end
 
-  # Test for HTTP POST for URL-matching pattern '/'
-  it "should return successfully on POST" do
-    post '/hello-world'
-    expect(last_response).to be_ok
-    expect(json_result["Output"]).to eq("Hello World!")
+  
+  context "Authenticating" do
+    it "callback after succesful login goes to dashboard" do
+      get '/auth/:provider/callback', {provider: 'cognito-idp'}, {'omniauth.auth' => make_full_authed_hash} 
+      expect(last_response.redirect?).to be true
+      expect(last_response.location).to end_with "/dashboard"
+      follow_redirect!
+      expect(last_response).to be_ok
+    end
+
+    it "put auth information in session" do
+      skip("test cookie based session")
+    end
   end
 
-  it "should POST params to API feedback endpoint with success" do
-    expect(stub_client)
-      .to receive(:put_item)
-      .with({
-        :condition_expression=>be_kind_of(String),
-        :expression_attribute_names=>be_kind_of(Hash),
-        :item=>
-         {"feedback"=>"AWS Lambda + Ruby == <3",
-          "id"=>be_kind_of(String),
-          "name"=>"Tomas",
-          "ts"=>be_within(3).of(Time.now.to_i)},
-        :table_name=>"FeedbackServerlessSinatraTable"})
-      .and_call_original
+  context "Go to upload page" do
+    it "redirects to login when unathenticated" do
+      skip "test unauthed session"
 
-    api_gateway_post('/api/feedback', { name: "Tomas", feedback: "AWS Lambda + Ruby == <3" })
+    end
 
-    expect(last_response).to be_ok
-  end
+    it "renders just find when authenticated" do
+      skip "test authed"
 
-  it "should successfuly GET items from API feedback endpoint in right order" do
-    stub_client.stub_responses(:scan, :items => [
-      {'name' => 'Zdenka', "ts" => 2345678, "feedback" => "Halestorm"},
-      {'name' => 'Tomas',  "ts" => 1234567, "feedback" => "Trivium"},
-      {'name' => 'xiangshen', "ts" => 5678901, "feedback" => "Awesome !"},
-    ])
-
-    get '/api/feedback'
-    expect(last_response).to be_ok
-    expect(json_result).to match_array([
-      { "name" => "Tomas",    "feedback"=>"Trivium",   "ts"=> be_kind_of(String)},
-      { "name" => "Zdenka",   "feedback"=>"Halestorm", "ts"=> be_kind_of(String)},
-      { "name" => "xiangshen","feedback"=>"Awesome !", "ts"=> be_kind_of(String)}
-    ])
+    end
   end
 end

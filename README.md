@@ -31,6 +31,13 @@ Ruby Sinatra on AWS Lambda: https://blog.eq8.eu/article/sinatra-on-aws-lambda.ht
 
 We want FaaS for Ruby: https://www.serverless-ruby.org/
 
+## Testing the sinatra app
+From the sinatra app directory, `sinapp`, have a terminal running the following.
+```sh
+fd . app/ spec/ | entr -c bundle exec rspec
+```
+Any time there are changes to the application or test files, rspec will be run.
+
 What's Here
 -----------
 
