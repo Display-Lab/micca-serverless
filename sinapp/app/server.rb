@@ -14,6 +14,7 @@ class SinApp < Sinatra::Base
   set :views, Proc.new { File.join(root, "views") }
 
   before do
+    # Consideration for running via AWS Lambda
     if (! request.body.read.empty? and request.body.size > 0)
       request.body.rewind
       @params = Sinatra::IndifferentHash.new
@@ -22,7 +23,7 @@ class SinApp < Sinatra::Base
   end
 
   ##################################
-  # For the index page
+  # Index page
   ##################################
   get '/' do
     erb :index
@@ -31,48 +32,24 @@ class SinApp < Sinatra::Base
   ##################################
   # Debug
   ##################################
-  get '/env' do
-    content_type :json
-    ENV.to_hash.to_json
-  end
-
-  get '/sess' do
-    content_type :json
-    session.to_hash.to_json
-  end
-
   get '/dbg' do
     session[:dbg] = DateTime.now.to_s
-    <<-HTML
-    <html>
-      <head>
-        <title>DBG</title>
-      </head>
-      <body>
-        <h2> Session </h2>
-        <pre>#{session.to_hash&.pretty_inspect}</pre>
-
-        <h2> DEBUG: request env </h2>
-        <pre>#{request.env&.pretty_inspect}</pre>
-
-      </body>
-    </html>
-    HTML
-  end
-
-  get '/redir' do
-    session[:redir] = DateTime.now.to_s
+    auth = session[:auth]
     <<-HTML
     <html>
       <head>
         <title>Cognito IdP Test</title>
       </head>
       <body>
-        <h2> Session </h2>
-        <pre>#{session.to_hash&.pretty_inspect}</pre>
+        <h1>Authenticated with #{params[:name]}</h1>
+        <h2>Authentication Object</h2>
+        <pre>#{auth&.pretty_inspect}</pre>
 
         <h2> DEBUG: request env </h2>
         <pre>#{request.env&.pretty_inspect}</pre>
+
+        <h2> Session </h2>
+        <pre>#{session.to_hash.to_json}</pre>
 
         <h2>Links</h2>
         <ul>
@@ -101,21 +78,8 @@ class SinApp < Sinatra::Base
   # Stub dashboard
   ##################################
   get '/dashboard' do
+    redirect '/' unless session[:auth]
     erb :dashboard
-  end
-
-  ##################################
-  # Web App with a DynamodDB table
-  ##################################
-
-  # Class for DynamoDB table
-  # This could also be another file you depend on locally.
-  class FeedbackServerlessSinatraTable
-    include Aws::Record
-    string_attr :id, hash_key: true
-    string_attr :name
-    string_attr :feedback
-    epoch_time_attr :ts
   end
 
   get '/feedback' do
@@ -156,39 +120,10 @@ class SinApp < Sinatra::Base
     end
   end
 
-  get '/login' do
-    #   <pre>#{session[:auth].pretty_inspect}</pre>
-    <<-HTML
-    <html>
-      <head>
-        <title>Cognito IdP Test</title>
-      </head>
-      <body>
-        <h1>Welcome</h1>
-        <h2>Session Auth</h2>
-        <h2>Links</h2>
-        <ul>
-          <li><a href="/auth/cognito-idp">Sign In</a></li>
-          <li><a href="/userinfo">Userinfo</a></li>
-        </ul>
-      </body>
-    </html>
-    HTML
-  end
-
   get '/userinfo' do
     redirect '/' unless session[:auth]
 
     userinfo = cognito_idp_client.get_user(access_token: session[:auth][:credentials][:token])
-
-    form_fields = userinfo.user_attributes.reject do |attr|
-      %w[sub].include?(attr.name) || attr.name.end_with?('_verified')
-    end
-
-    form_inputs = form_fields.map { |attr| <<-HTML }.join("\n")
-      <dt><label for="#{attr.name}">#{attr.name}</label></dt>
-      <dd><input type="text" name="#{attr.name}" value="#{h(attr.value)}" /></dd>
-    HTML
 
     <<-HTML
     <html>
@@ -198,10 +133,6 @@ class SinApp < Sinatra::Base
       <body>
         <h1>User Info From Cognito</h1>
         <pre>#{userinfo.to_h.pretty_inspect}</pre>
-        <form action="/userinfo" method="POST">
-          #{form_inputs}
-          <input type="submit" value="Update" />
-        </form>
         <h2>Links</h2>
         <ul>
           <li><a href="/">Home</a></li>
@@ -239,13 +170,9 @@ class SinApp < Sinatra::Base
     HTML
   end
 
-  # This does the login? or after the call to the idp login?
-  # This is the callback uri that need to be provided to cognito
-  #   /auth/cognito-idp/callback
-  #   Omniauth provides the /auth/cognito-idp endpoint? yes.
-  #     What to pass to it? email and password?
+  # This is the callback uri that need to be provided to cognito: /auth/cognito-idp/callback
+  #   Omniauth provides the /auth/cognito-idp endpoint redirection to identity provider (idp)
   get '/auth/:provider/callback' do
-    # Set the session auth
     # Trim auth hash to get under 4k limit for cookie size. 
     #   Drop id token (JWT).  The info is in extra already.
     #   Drop refresh_token.  This limits auth to 1 hour.
@@ -256,37 +183,10 @@ class SinApp < Sinatra::Base
       end
     end
     
+    # Stuff auth into cookie
     session[:auth] = auth
-
-    <<-HTML
-    <html>
-      <head>
-        <title>Cognito IdP Test</title>
-      </head>
-      <body>
-        <h1>Authenticated with #{params[:name]}</h1>
-        <h2>Authentication Object</h2>
-        <pre>#{auth&.pretty_inspect}</pre>
-
-        <h2> DEBUG: request env </h2>
-        <pre>#{request.env&.pretty_inspect}</pre>
-
-        <h2> Session </h2>
-        <pre>#{session.to_hash.to_json}</pre>
-
-        <h2>Links</h2>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/userinfo">Userinfo</a></li>
-        </ul>
-      </body>
-    </html>
-    HTML
+    redirect '/dashboard'
   end
-
-  #get '/auth/:provider/callback' do
-  #  "called us back"
-  #end
 
   get '/auth/failure' do
     <<-HTML
@@ -295,13 +195,26 @@ class SinApp < Sinatra::Base
         <title>Auth Failed</title>
       </head>
       <body>
-        <h2> DEBUG: request env </h2>
-        <pre>#{request.env&.pretty_inspect}</pre>
-
+        <h1>Auth Failed</h1>
+        <h2> <a href="/">Home</a> </h2>
         <h2> Session </h2>
-        <pre>#{session.to_hash.to_json}</pre>
+        <pre>#{session&.pretty_inspect}</pre>
       </body>
     HTML
   end
 
+end
+
+##################################
+# Web App with a DynamodDB table
+##################################
+
+# Class for DynamoDB table
+# This could also be another file you depend on locally.
+class FeedbackServerlessSinatraTable
+  include Aws::Record
+  string_attr :id, hash_key: true
+  string_attr :name
+  string_attr :feedback
+  epoch_time_attr :ts
 end
