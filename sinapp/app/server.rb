@@ -75,34 +75,11 @@ class SinApp < Sinatra::Base
   end
 
   ##################################
-  # Stub dashboard
+  # Dashboard
   ##################################
   get '/dashboard' do
     redirect '/' unless session[:auth]
     erb :dashboard
-  end
-
-  get '/feedback' do
-    erb :feedback
-  end
-
-  get '/api/feedback' do
-    content_type :json
-    items = FeedbackServerlessSinatraTable.scan()
-    items
-      .map { |r| { :ts => r.ts, :name => r.name, :feedback => r.feedback } }
-      .sort { |a, b| a[:ts] <=> b[:ts] }
-      .to_json
-  end
-
-  post '/api/feedback' do
-    content_type :json
-    item = FeedbackServerlessSinatraTable.new(id: SecureRandom.uuid, ts: Time.now)
-    item.name = params[:name]
-    item.feedback = params[:feedback]
-    item.save! # raise an exception if save fails
-
-    item.to_h.to_json
   end
 
   ##################################
