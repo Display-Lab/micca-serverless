@@ -226,6 +226,9 @@ Resources:
         Aliases:
           - !Sub assets.${MainDomainName}
         DefaultCacheBehavior:
+          MaxTTL: 7200
+          DefaultTTL: 3600
+          MinTTL: 300
           AllowedMethods:
           - GET
           - HEAD
