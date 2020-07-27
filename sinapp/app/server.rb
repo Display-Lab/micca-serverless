@@ -41,38 +41,6 @@ class SinApp < Sinatra::Base
   end
 
   ##################################
-  # Debug
-  ##################################
-  get '/dbg' do
-    session[:dbg] = DateTime.now.to_s
-    auth = session[:auth]
-    <<-HTML
-    <html>
-      <head>
-        <title>Cognito IdP Test</title>
-      </head>
-      <body>
-        <h1>Authenticated with #{params[:name]}</h1>
-        <h2>Authentication Object</h2>
-        <pre>#{auth&.pretty_inspect}</pre>
-
-        <h2> DEBUG: request env </h2>
-        <pre>#{request.env&.pretty_inspect}</pre>
-
-        <h2> Session </h2>
-        <pre>#{session.to_hash.to_json}</pre>
-
-        <h2>Links</h2>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/userinfo">Userinfo</a></li>
-        </ul>
-      </body>
-    </html>
-    HTML
-  end
-
-  ##################################
   # Return a Hello world JSON
   ##################################
   get '/hello-world' do
