@@ -7,8 +7,6 @@ require 'aws-sdk-s3'
 require 'pp'
 require 'date'  
 
-require 'pry'
-
 require_relative 'data_manip.rb'
 
 class SinApp < Sinatra::Base
@@ -46,19 +44,6 @@ class SinApp < Sinatra::Base
   ##################################
   get '/' do
     erb :index
-  end
-
-  ##################################
-  # Return a Hello world JSON
-  ##################################
-  get '/hello-world' do
-    content_type :json
-    { :Output => 'Hello World!' }.to_json
-  end
-
-  post '/hello-world' do
-      content_type :json
-      { :Output => 'Hello World!' }.to_json
   end
 
   ##################################
@@ -119,56 +104,6 @@ class SinApp < Sinatra::Base
     end
   end
 
-  get '/userinfo' do
-    redirect '/' unless session[:auth]
-
-    userinfo = cognito_idp_client.get_user(access_token: session[:auth][:credentials][:token])
-
-    <<-HTML
-    <html>
-      <head>
-        <title>Cognito IdP Test</title>
-      </head>
-      <body>
-        <h1>User Info From Cognito</h1>
-        <pre>#{userinfo.to_h.pretty_inspect}</pre>
-        <h2>Links</h2>
-        <ul>
-          <li><a href="/">Home</a></li>
-        </ul>
-      </body>
-    </html>
-    HTML
-  end
-
-  post '/userinfo' do
-    redirect '/' unless session[:auth]
-
-    attributes = params.map { |k, v| {name: k, value: v} }
-
-    result = cognito_idp_client.update_user_attributes(
-      user_attributes: attributes,
-      access_token: session[:auth][:credentials][:token]
-    )
-
-    <<-HTML
-    <html>
-      <head>
-        <title>Cognito IdP Test</title>
-      </head>
-      <body>
-        <h1>Updated User Attributes at Cognito</h1>
-        <pre>#{result.to_h.pretty_inspect}</pre>
-        <h2>Links</h2>
-        <ul>
-          <li><a href="/userinfo">Userinfo</a>
-          <li><a href="/">Home</a></li>
-        </ul>
-      </body>
-    </html>
-    HTML
-  end
-
   # This is the callback uri that need to be provided to cognito: /auth/cognito-idp/callback
   #   Omniauth provides the /auth/cognito-idp endpoint redirection to identity provider (idp)
   get '/auth/:provider/callback' do
@@ -201,19 +136,4 @@ class SinApp < Sinatra::Base
       </body>
     HTML
   end
-
-end
-
-##################################
-# Web App with a DynamodDB table
-##################################
-
-# Class for DynamoDB table
-# This could also be another file you depend on locally.
-class FeedbackServerlessSinatraTable
-  include Aws::Record
-  string_attr :id, hash_key: true
-  string_attr :name
-  string_attr :feedback
-  epoch_time_attr :ts
 end
