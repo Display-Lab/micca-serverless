@@ -17,14 +17,15 @@ class SinApp < Sinatra::Base
   set :root, File.dirname(__FILE__)
   set :views, Proc.new { File.join(root, "views") }
 
+  # Use local js files when not in production
   if( ENV['RACK_ENV'] == 'production')
     set :js_base_url, "https://assets.micca.report"
   else
     set :js_base_url, ""
   end
 
+  # Consideration for running via AWS Lambda
   before do
-    # Consideration for running via AWS Lambda
     if (! request.body.read.empty? and request.body.size > 0)
       request.body.rewind
       @params = Sinatra::IndifferentHash.new
@@ -36,6 +37,24 @@ class SinApp < Sinatra::Base
       else
         @params.merge!(JSON.parse(request.body.read))
       end
+    end
+  end
+
+  ####################
+  # Helper Functions #
+  ####################
+
+  helpers do
+    def h(text)
+      Rack::Utils.escape_html(text)
+    end
+
+    def cognito_idp_client
+      Aws::CognitoIdentityProvider::Client.new(region: ENV['AWS_REGION'])
+    end
+
+    def s3_client
+      Aws::S3::Client.new(region: ENV['AWS_REGION'])
     end
   end
 
@@ -85,26 +104,13 @@ class SinApp < Sinatra::Base
     end
   end
 
-  ##################################
-  # Login using Cognito
-  #   From cognito-omniauth small example
-  ##################################
 
-  helpers do
-    def h(text)
-      Rack::Utils.escape_html(text)
-    end
 
-    def cognito_idp_client
-      Aws::CognitoIdentityProvider::Client.new(region: ENV['AWS_REGION'])
-    end
-
-    def s3_client
-      Aws::S3::Client.new(region: ENV['AWS_REGION'])
-    end
-  end
-
-  # This is the callback uri that need to be provided to cognito: /auth/cognito-idp/callback
+  #######################
+  # Login using Cognito #
+  #######################
+  
+  # This is the callback uri that needs to be provided to cognito: /auth/cognito-idp/callback
   #   Omniauth provides the /auth/cognito-idp endpoint redirection to identity provider (idp)
   get '/auth/:provider/callback' do
     # Trim auth hash to get under 4k limit for cookie size. 
