@@ -68,40 +68,52 @@ function transmitAggregate(data){
 
   xhr.open('POST', '/upload');
   xhr.send(formData);
+
+  clearElementChildren('aggregation-output');
 }
 
 function transferComplete(evt){
   console.log('Upload complete.');
   let uploadOutput = document.getElementById('upload-output');
+  uploadOutput.appendChild( document.createElement("hr") );
+
   let outP = uploadOutput.appendChild( document.createElement("p") );
   outP.innerHTML = "Upload Done";
+
+  let outPre = uploadOutput.appendChild( document.createElement("pre") );
+  outPre.innerHTML = this.response;
 }
 
 function transferFailed(evt){
   console.log('Upload FAILED!.');
   let uploadOutput = document.getElementById('upload-output');
+  uploadOutput.appendChild( document.createElement("hr") );
+
   let outP = uploadOutput.appendChild( document.createElement("p") );
   outP.innerHTML = "Upload failed.";
 
+  let outPre = uploadOutput.appendChild( document.createElement("pre") );
+  outPre.innerHTML = this.response;
 }
 
-function resetValidateAggregate(){
+function clearElementChildren(eleId){
+  let ele = document.getElementById(eleId);
+  while(ele.firstChild){ ele.removeChild(ele.firstChild); }
+}
+
+function resetAllOutputs(){
   aggData = null;
-  let validateOutput = document.getElementById('validation-output');
-  let aggregateOutput = document.getElementById('aggregation-output');
-  let uploadOutput = document.getElementById('upload-output');
+  clearElementChildren('aggregation-output');
+  clearElementChildren('validation-output');
+  clearElementChildren('upload-output');
+
   let confirmButton = document.getElementById('confirm-upload');
-
-  while(validateOutput.firstChild){ validateOutput.removeChild(validateOutput.firstChild); }
-  while(aggregateOutput.firstChild){ aggregateOutput.removeChild(aggregateOutput.firstChild); }
-  while(uploadOutput.firstChild){ uploadOutput.removeChild(uploadOutput.firstChild); }
-
   confirmButton.disabled = true;
 }
 
 function onChangeHandler(files){
   console.log("file changed");
-  resetValidateAggregate();
+  resetAllOutputs();
 
   // Read file and update DOM
   let file = files[0];
