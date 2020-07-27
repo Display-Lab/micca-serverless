@@ -35,10 +35,23 @@ Parameters:
   ExtUserPoolId:
     Type: String
     Default: "not-provided"
-    Description: ARN of external UserPool 
+    Description: Pool Id of external UserPool 
+
+  CookieSecret:
+    Type: String
+    Description: Session cookie secret
 
 Conditions:
   UseInternalPool: !Equals [ !Ref ExtUserPoolId, "not-provided" ]
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      S3hostedzoneID: Z3AQBSTGFYJSTF
+      websiteendpoint: s3-website-us-east-1.amazonaws.com
+    us-west-1:
+      S3hostedzoneID: Z2F56UZL2M1ACD
+      websiteendpoint: s3-website-us-west-1.amazonaws.com
 
 Resources:
 
@@ -60,9 +73,13 @@ Resources:
           COGNITO_USER_POOL_SITE: !Sub auth.${MainDomainName}
           COGNITO_USER_POOL_ID: !If [ UseInternalPool, !Ref InternalUserPool, !Ref ExtUserPoolId ]
           DOMAIN: !Sub ${AppStage}.${MainDomainName}
+          BUCKET: !Ref DataStorageBucket
+          COOKIE_SECRET: !Ref CookieSecret
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref FeedbackTable
+        - S3CrudPolicy:
+            BucketName: !Ref DataStorageBucket
       CodeUri: "./sinapp"
       MemorySize: 512
       Timeout: 30
@@ -153,6 +170,90 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
 
+  ##############
+  # S3 Backing #
+  ##############
+
+  DataStorageBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub data.${AppStage}.${MainDomainName}
+
+  #############
+  # S3 Assets #
+  #############
+
+  AssetsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub assets.${MainDomainName}
+      AccessControl: PublicRead
+
+
+  AssetBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      PolicyDocument:
+        Id: MyAssetPolicy
+        Version: 2012-10-17
+        Statement:
+          - Sid: PublicReadForGetBucketObjects
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref AssetsBucket
+                - /*
+      Bucket: !Ref AssetsBucket
+
+  AssetDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt AssetsBucket.DomainName
+            Id: S3-micca-assets
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        Enabled: 'true'
+        Comment: Distribute with cloudfront to get that sweet https
+        DefaultRootObject: ''
+        IPV6Enabled: 'true'
+        Aliases:
+          - !Sub assets.${MainDomainName}
+        DefaultCacheBehavior:
+          AllowedMethods:
+          - GET
+          - HEAD
+          TargetOriginId: S3-micca-assets
+          ForwardedValues:
+            QueryString: 'false'
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: redirect-to-https
+        PriceClass: PriceClass_200
+        ViewerCertificate:
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2019
+          AcmCertificateArn: !Ref DNSCertArn
+
+  AssetDNS:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Name: !Sub assets.${MainDomainName} 
+      HostedZoneId: !Ref ZoneId
+      Comment: Assets subdomain for MICCA
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName: !GetAtt AssetDistribution.DomainName
+        EvaluateTargetHealth: false
+
+
   ########################################
   # Cognito User Pool for Authentication #
   ########################################
@@ -188,7 +289,7 @@ Resources:
     Properties: 
       CustomDomainConfig: 
         CertificateArn: !Ref DNSCertArn 
-      Domain: auth.inference.es
+      Domain: !Sub auth.${MainDomainName}
       UserPoolId: !If [ UseInternalPool, !Ref InternalUserPool, !Ref ExtUserPoolId ]
 
   AuthDomainRecordSet:
@@ -452,3 +553,6 @@ Outputs:
   UserPoolDomainTarget:
     Description: "The CloudFront distribution target for A and AAAA aliases."
     Value: !GetAtt UPDomain.CloudFrontDistribution
+  DataStorage:
+    Description: "The S3 bucket for storing data and reports"
+    Value: !Ref DataStorageBucket

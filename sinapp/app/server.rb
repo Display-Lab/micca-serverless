@@ -6,7 +6,6 @@ require 'aws-record'
 require 'aws-sdk-s3'
 require 'pp'
 require 'date'  
-require 'pry'
 
 require_relative 'data_manip.rb'
 

@@ -63,12 +63,14 @@ def handler(event:, context:)
     env[header] = value.to_s
   end
 
+  # This prevents serving out images and minified js
   begin
     # Response from Rack must have status, headers and body
     status, headers, body = $app.call env
 
     # body is an array. We combine all the items to a single string
     body_content = ""
+
     body.each do |item|
       body_content += item.to_s
     end
