@@ -7,6 +7,8 @@ require 'aws-sdk-s3'
 require 'pp'
 require 'date'  
 
+require 'pry'
+
 require_relative 'data_manip.rb'
 
 class SinApp < Sinatra::Base
@@ -16,6 +18,12 @@ class SinApp < Sinatra::Base
 
   set :root, File.dirname(__FILE__)
   set :views, Proc.new { File.join(root, "views") }
+
+  if( ENV['RACK_ENV'] == 'production')
+    set :js_base_url, "https://assets.micca.report"
+  else
+    set :js_base_url, ""
+  end
 
   before do
     # Consideration for running via AWS Lambda
@@ -68,16 +76,27 @@ class SinApp < Sinatra::Base
     if session[:auth]
       # Verify header
       unless DataManip.verify_header(file)
-        return [200, {message: "Aggregate file header validation failed."}]
+        return [200, {message: "Aggregate file header validation failed."}.to_json]
       end
 
       # Append ascribee
+      user = cognito_idp_client.get_user(access_token: session[:auth][:credentials][:token])
+      site_attr = user.user_attributes.select{|attr| attr["name"] == "custom:site"}.first
+      ascribee = site_attr['value']
+      updated_data = DataManip.append_ascribee(file, ascribee)
 
       # Write file to S3
-      
-      return [200, {message: "Data stored"}]
+      asribee_dashed = ascribee.sub(/ /,'-')
+      obj_key = "data/#{asribee_dashed}/#{Time.now.iso8601}_maptg.csv"
+
+      s3 = Aws::S3::Resource.new
+      bucket = s3.bucket(ENV['BUCKET'])
+      obj = bucket.object(obj_key)
+      obj.put(body: updated_data)
+
+      return [200, {message: "Data stored", location: obj_key}.to_json]
     else
-      return [401, {message: "Unauthorized"}]
+      return [401, {message: "Unauthorized"}.to_json]
     end
   end
 
