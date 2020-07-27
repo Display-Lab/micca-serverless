@@ -11,13 +11,37 @@ Plan is to:
 - Using bucket sinatra-sam-demo
 - Stuff template parameters in samconfig.toml
 - Requires custom domain to provide callback URIs
-- Need to manually add the alias record for the auth subdomain to the cloudfront distribution.
-- Need to create the Cognito User Pool independently of the stack
+- Need to create the Cognito User Pool independently of the application stack
 - No way to back up Cognito User Pool
-
 - Need to build and bundle the application locally to handle native compiled gems.
     `build_dependencies.sh` runs `bundling.sh` in a docker container that approximates AWS lambda container.
 
+## Deployment
+
+### Dependencies External  to Application Stack
+
+- S3 bucket for storing application stack package versions
+    ```sh
+    aws s3 mb s3://micca-app-pkgs
+    ```
+- S3 bucket for persisting data
+    ```sh
+    aws s3 mb s3://micca-reports
+    ```
+- User Pool for handling user auth
+    ```
+    aws cloudformation create-stack --stack-name micca-users --template-body file://ext-user-pool.yaml
+    ```
+- Log in to cognito web UI to create users and specify site
+    
+
+### Application Stack Deployment
+
+Wrote a convenience script for setting up and tearing down:
+```sh
+deploy.sh
+dismantle.sh
+```
 ## Running Ruby Sinatra on AWS Lambda
 Originally from: git@github.com:aws-samples/serverless-sinatra-sample
 

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-SINAPP_BUCKET=${SINAPP_BUCKET:-sinatra-sam-demo}
-SINAPP_STACK=${SINAPP_BUCKET:-sinatra-stack}
-
+SINAPP_BUCKET=${SINAPP_BUCKET:-micca-app-pkgs}
+SINAPP_STACK=${SINAPP_STACK:-micca-application-stack}
 
 echo "Teardown"
 
