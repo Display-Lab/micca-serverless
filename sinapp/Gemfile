@@ -19,5 +19,6 @@ end
 # Dependencies provided by container need to be installed locally
 group :local do
   gem "aws-sdk-cognitoidentityprovider"
+  gem "aws-sdk-s3"
   gem "aws-record"
 end

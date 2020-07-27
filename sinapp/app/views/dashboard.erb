@@ -1,6 +1,50 @@
-<h1>
-    <div>Dashboard</div>
-</h1>
-<div>- from SINATRA on AWS Lambda</div>
-<br>
-<div>Logout: <a href="logout">logout</a></div>
+<script src='/js/micca.js'></script>
+<script src='/js/validate-upload.js'></script>
+
+<%= erb :header, :layout => false %>
+
+<div class="container-full">
+  <div class="container grid-xl">
+    <div class="columns negative-m-xl">
+      <div class="column col-12">
+        <h2 class="text-light text-bold">Upload Your Data</h2>
+      </div>
+      <div class="column col-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="container">
+              <div id='intro-section'>
+                <p>
+                Use this page to aggregate and then transmit your data for the MICCA project reports.  You will be able to preview the aggregate data before it gets transmitted and stored.
+                </p>
+              </div>
+              <div id='getter-section'>
+                <p>Step 1: Select MICCA input file:</p>
+                <input id='input-file' type='file' onchange='onChangeHandler(this.files)'>
+                <hr/>
+              </div>
+              <div id='output-section'>
+                <p>Step 2: View report of any issues with input data</p>
+                <div id='validation-output'></div>
+                <hr/>
+              </div>
+              <div id='verify-upload'>
+                <p>Step 3: Confirm to upload aggregate data</p>
+                <button id='confirm-upload' type='button' disabled=true onclick='transmitAggregate(aggData)'>Confirm and Upload</button>
+                <div id='upload-output'></div>
+                <div id='aggregation-output'></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="column col-4 col-sm-12 p-8 mb-8 col-mx-auto">
+        <h5>Help Desk</h5>
+        <p>Report an issue via GitHub, or email us at displaylab@umich.edu</p>
+        <a href="https://github.com/Display-Lab/micca-static/issues">Report an issue <i class='uil uil-arrow-right arrow-hover'></i></a>
+      </div>
+    </div>
+  </div>
+</div> 
+
+<%= erb :footer, :layout => false %>

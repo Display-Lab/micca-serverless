@@ -1,9 +1,14 @@
+require 'json'
 require 'omniauth-cognito-idp'
 require 'sinatra/base'
 require 'aws-sdk-cognitoidentityprovider'
 require 'aws-record'
+require 'aws-sdk-s3'
 require 'pp'
 require 'date'  
+require 'pry'
+
+require_relative 'data_manip.rb'
 
 class SinApp < Sinatra::Base
   configure :production, :development do
@@ -18,7 +23,14 @@ class SinApp < Sinatra::Base
     if (! request.body.read.empty? and request.body.size > 0)
       request.body.rewind
       @params = Sinatra::IndifferentHash.new
-      @params.merge!(JSON.parse(request.body.read))
+      # Don't try to JSON parse form data
+      #   Means the params will have be be obtained via request.params
+      #   Actually, the only time we want to parse the body like this is IF it's JSON.
+      if request.form_data?
+        @params.merge!(request.params)
+      else
+        @params.merge!(JSON.parse(request.body.read))
+      end
     end
   end
 
@@ -75,11 +87,31 @@ class SinApp < Sinatra::Base
   end
 
   ##################################
-  # Dashboard
+  # Dashboard & Upload
   ##################################
   get '/dashboard' do
     redirect '/' unless session[:auth]
     erb :dashboard
+  end
+
+  post '/upload' do
+    content_type :json
+    file = params[:file][:tempfile]
+
+    if session[:auth]
+      # Verify header
+      unless DataManip.verify_header(file)
+        return [200, {message: "Aggregate file header validation failed."}]
+      end
+
+      # Append ascribee
+
+      # Write file to S3
+      
+      return [200, {message: "Data stored"}]
+    else
+      return [401, {message: "Unauthorized"}]
+    end
   end
 
   ##################################
@@ -94,6 +126,10 @@ class SinApp < Sinatra::Base
 
     def cognito_idp_client
       Aws::CognitoIdentityProvider::Client.new(region: ENV['AWS_REGION'])
+    end
+
+    def s3_client
+      Aws::S3::Client.new(region: ENV['AWS_REGION'])
     end
   end
 
