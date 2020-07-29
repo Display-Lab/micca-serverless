@@ -56,13 +56,23 @@ class SinApp < Sinatra::Base
     def s3_client
       Aws::S3::Client.new(region: ENV['AWS_REGION'])
     end
+
+  end
+
+  #####################
+  # Utility Functions #
+  #####################
+
+  def get_user(session)
+    session&.dig('auth', 'extra', 'raw_info', 'email')
   end
 
   ##################################
   # Index page
   ##################################
   get '/' do
-    erb :index
+    user = get_user(session)
+    erb :index, layout: true, locals: {user: user}
   end
 
   ##################################
@@ -70,9 +80,13 @@ class SinApp < Sinatra::Base
   ##################################
   get '/dashboard' do
     redirect '/' unless session[:auth]
-    erb :dashboard
+
+    user = get_user(session)
+
+    erb :dashboard, layout: true, locals: {user: user}
   end
 
+  # Target for XHR request from dashboard JS
   post '/upload' do
     content_type :json
     file = params[:file][:tempfile]
@@ -141,5 +155,19 @@ class SinApp < Sinatra::Base
         <pre>#{session&.pretty_inspect}</pre>
       </body>
     HTML
+  end
+
+  get '/logout' do
+    logout_url = "https://#{ENV['COGNITO_USER_POOL_SITE']}/logout"
+
+    if( ENV['RACK_ENV'] == 'production')
+      query = "client_id=#{ENV['CLIENT_ID']}&logout_uri=https://#{ENV['DOMAIN']}"
+    else
+      query = "client_id=#{ENV['CLIENT_ID']}&logout_uri=http://#{ENV['DOMAIN']}:40123"
+    end
+
+    session[:auth] = nil
+    session.clear
+    redirect "#{logout_url}?#{query}"
   end
 end

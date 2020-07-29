@@ -1,13 +1,13 @@
 <script src=<%= settings.js_base_url %>'/js/micca.js'></script>
 <script src=<%= settings.js_base_url %>'/js/validate-upload.js'></script>
 
-<%= erb :header, :layout => false %>
+<%= erb :header, layout: false, locals: {user: user} %>
 
 <div class="container-full">
   <div class="container grid-xl">
     <div class="columns negative-m-xl">
       <div class="column col-12">
-        <h2 class="text-light text-bold">Upload Your Data</h2>
+        <h2 class="text-light text-bold text-center">Upload Your Data</h2>
       </div>
       <div class="column col-12">
         <div class="card">

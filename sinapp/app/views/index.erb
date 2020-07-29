@@ -1,8 +1,19 @@
-<h1>
-    <div>MICCA Data Upload</div>
-</h1>
-<div>- from SINATRA on AWS Lambda</div>
-<br>
-<div>
-  <a href="/auth/cognito-idp">Sign In</a>
+<%= erb :header, layout: false, locals: {user: user} %>
+
+<div class="container-full">
+  <div class="container grid-xl">
+    <div class="columns negative-m-xl">
+      <div class="column col-12">
+        <h1 class="text-light text-bold text-center">MICCA Data Upload Tool</h1>
+      </div>
+      <div class="column col-12">
+        <div class="text-secondary text-center text-large">
+          <a href="/auth/cognito-idp" class="light-link">Sign in</a> 
+          to be directed to the 
+          <a href="/dashboard" class="light-link">dashboard</a> 
+          where you can upload your site's micca data.
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

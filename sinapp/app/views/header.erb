@@ -1,3 +1,4 @@
+<% user ||= nil %>
 <div class="header-bg">
   <div class="container-full">
     <div class="header ">
@@ -12,9 +13,19 @@
           <li class="mx-4">
             <a  class="nav-links" href="https://micca.report">Home</a>
           </li>
-          <li>
-            <a href="/logout" style="height: auto;" class="btn btn-lg btn-outline py-2">Logout</a>
+          <% if user %>
+          <li class="mx-4">
+            <a  class="nav-links" href="/dashboard">Dashboard</a>
           </li>
+          <li>
+            <a href="/logout" style="height: auto;" class="btn btn-lg btn-outline py-2">Sign Out</a>
+          </li>
+          <% else %>
+          <li>
+            <a href="/auth/cognito-idp" style="height: auto;" class="btn btn-lg btn-outline py-2">Sign In</a>
+          </li>
+          <% end %>
+
         </ul>
       </nav>
       <header class="container grid-xl landing-header">
