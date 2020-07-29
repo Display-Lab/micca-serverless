@@ -62,6 +62,41 @@ fd . app/ spec/ | entr -c bundle exec rspec
 ```
 Any time there are changes to the application or test files, rspec will be run.
 
+## User Management
+Using the aws cli
+
+### Adding Users
+```sh
+aws cognito-idp admin-create-user \
+  --user-pool-id us-east-1_eXamPLE \
+  --username user@example.com \
+  --user-attributes Name=email,Value=user@example.com Name=custom:site,Value="Display Lab" \
+  --desired-delivery-mediums EMAIL \
+```
+
+### List Users
+```sh
+aws cognito-idp list-user \
+  --user-pool-id us-east-1_eXamPLE 
+``` 
+
+## Updating the external users stack
+Make edits to the template, the fire up the aws cli
+
+```sh
+# Get the arn of the stack
+aws cloudformation describe-stacks
+
+# Create change set
+CHNG_SET_NAME=MU$(date %Y%m%dT%H%M)
+aws cloudformation create-change-set --stack-name arn:of:the:stack \
+  --change-set-name ${CHNG_SET_NAME} --template-body file://ext-user-pool.yaml
+
+# Excecute the change set (note the changeset arn from above step)
+aws cloudformation execute-change-set --change-set-name arn:of:changeset
+```
+
+
 What's Here
 -----------
 

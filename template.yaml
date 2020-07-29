@@ -273,13 +273,16 @@ Resources:
             EmailSubject: "Welcome to Demo MICCA"
             EmailMessage: |
               Hello, 
-
-              You have been designated as a user of the MICCA project.  
-              Please use this link to login to the MICCA website (https://larc.micca.report/) 
-
-              The first time you access the site you will be asked to reset your password.
-              Your user name is {username}
-              Your temporary password is {####}
+              <br>
+              <p>
+              You have been designated as a user of the MICCA project.<br>
+              Please use <a href="https://larc.micca.report">this link</a> to login to the MICCA website (https://larc.micca.report)<br> 
+              <br></p>
+              <p>
+              The first time you access the site you will be asked to reset your password.<br>
+              Your user name is {username}<br>
+              Your temporary password is {####}<br>
+              </p>
 
           UnusedAccountValidityDays: 60
       MfaConfiguration: "OFF"
