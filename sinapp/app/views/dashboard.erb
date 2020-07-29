@@ -1,5 +1,5 @@
 <script src=<%= settings.js_base_url %>'/js/micca.js'></script>
-<script src=<%= settings.js_base_url %>'/js/validate-upload.js'></script>
+<script src=<%= settings.js_base_url %>'/js/validate-upload-1.1.js'></script>
 
 <%= erb :header, layout: false, locals: {user: user} %>
 
@@ -31,7 +31,7 @@
               <div id='verify-upload'>
                 <p>Step 3: Confirm to upload aggregate data</p>
                 <button id='confirm-upload' type='button' disabled=true onclick='transmitAggregate(aggData)'>Confirm and Upload</button>
-                <div id='upload-output'></div>
+                <div id='upload-output' class='text-bold'></div>
                 <div id='aggregation-output'></div>
               </div>
             </div>

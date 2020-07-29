@@ -1,5 +1,6 @@
-<!-- Function to handle file input and display results -->
-<!-- Extract this to a bundle or components later -->
+// Function to handle file input and display results
+// TODO: Extract this to a bundle or components later
+// version 1.1
 
 var aggData = null;
 
@@ -78,6 +79,7 @@ function transferComplete(evt){
   uploadOutput.appendChild( document.createElement("hr") );
 
   let outP = uploadOutput.appendChild( document.createElement("p") );
+  outP.classList.add("text-success");
   outP.innerHTML = "Upload Done";
 
   let outPre = uploadOutput.appendChild( document.createElement("pre") );
@@ -91,6 +93,7 @@ function transferFailed(evt){
 
   let outP = uploadOutput.appendChild( document.createElement("p") );
   outP.innerHTML = "Upload failed.";
+  outP.classList.add("text-error");
 
   let outPre = uploadOutput.appendChild( document.createElement("pre") );
   outPre.innerHTML = this.response;
