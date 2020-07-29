@@ -21,4 +21,4 @@ sam deploy \
   --capabilities CAPABILITY_IAM
 
 echo "Sync S3 Assets"
-aws s3 sync sinapp/app/public/ s3://${ASSETS_BUCKET}
+aws s3 sync --exclude *.swp sinapp/app/public/ s3://${ASSETS_BUCKET}

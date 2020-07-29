@@ -316,8 +316,9 @@ Resources:
       UserPoolId: !If [ UseInternalPool, !Ref InternalUserPool, !Ref ExtUserPoolId ]
       CallbackURLs:
         - !Sub "https://${AppStage}.${MainDomainName}/auth/cognito-idp/callback"
-        - !Sub "https://${AppStage}.${MainDomainName}/dashboard"
       DefaultRedirectURI: !Sub "https://${AppStage}.${MainDomainName}/auth/cognito-idp/callback"
+      LogoutURLs:
+        - !Sub "https://${AppStage}.${MainDomainName}"
       SupportedIdentityProviders: 
         - COGNITO
       ReadAttributes:
