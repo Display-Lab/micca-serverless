@@ -11,12 +11,26 @@ Resources:
         AllowAdminCreateUserOnly: true
         InviteMessageTemplate:
           EmailSubject: MICCA IPLARC Reporting Login Information
-          EmailMessage: >-
-            You have been designated as a user of the MICCA project. {username}
-            {####}
-        UnusedAccountValidityDays: 60
+          EmailMessage: |
+            Hello, 
+             
+            You have been designated as a user of the MICCA project.  
+            Please use this link to login to the MICCA website (https://larc.micca.report/) 
+            
+            The first time you access the site you will be asked to reset your password.
+            Your user name is {username}
+            Your temporary password is {####}
+
       AutoVerifiedAttributes:
         - email
+      Policies:
+        PasswordPolicy:
+          TemporaryPasswordValidityDays: 7
+          RequireLowercase: false
+          RequireNumbers: false
+          RequireSymbols: false
+          RequireUppercase: false
+          MinimumLength: 8
       DeviceConfiguration:
         ChallengeRequiredOnNewDevice: false
         DeviceOnlyRememberedOnUserPrompt: true
