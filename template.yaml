@@ -191,34 +191,37 @@ Resources:
       BucketName: !Sub assets.${MainDomainName}
       AccessControl: PublicRead
 
+  AssetAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: Permit access S3 bucket content only through CloudFront
 
-  AssetBucketPolicy:
+  DistPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
+      Bucket:
+        Ref: AssetsBucket
       PolicyDocument:
-        Id: MyAssetPolicy
-        Version: 2012-10-17
+        Version: "2012-10-17"
         Statement:
-          - Sid: PublicReadForGetBucketObjects
-            Effect: Allow
-            Principal: '*'
-            Action: 's3:GetObject'
-            Resource: !Join
-              - ''
-              - - 'arn:aws:s3:::'
-                - !Ref AssetsBucket
-                - /*
-      Bucket: !Ref AssetsBucket
+          - Effect: Allow
+            Principal:
+              CanonicalUser:
+                Fn::GetAtt: [ AssetAccessIdentity , S3CanonicalUserId ]
+            Action: "s3:GetObject"
+            Resource: !Sub "${AssetsBucket.Arn}/*"
 
   AssetDistribution:
     Type: AWS::CloudFront::Distribution
+    DependsOn: AssetsBucket
     Properties:
       DistributionConfig:
         Origins:
           - DomainName: !GetAtt AssetsBucket.DomainName
             Id: S3-micca-assets
             S3OriginConfig:
-              OriginAccessIdentity: ''
+              OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${AssetAccessIdentity}
         Enabled: 'true'
         Comment: Distribute with cloudfront to get that sweet https
         DefaultRootObject: ''
