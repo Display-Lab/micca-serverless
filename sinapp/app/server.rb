@@ -18,10 +18,10 @@ class SinApp < Sinatra::Base
   set :views, Proc.new { File.join(root, "views") }
 
   # Use local js files when not in production
-  if( ENV['RACK_ENV'] == 'production')
-    set :js_base_url, "https://assets.micca.report"
-  else
+  if( ENV['RACK_ENV'] == 'local')
     set :js_base_url, ""
+  else
+    set :js_base_url, "https://assets.micca.report"
   end
 
   # Consideration for running via AWS Lambda
