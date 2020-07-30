@@ -1,5 +1,5 @@
 <script src=<%= settings.js_base_url %>'/js/micca.js'></script>
-<script src=<%= settings.js_base_url %>'/js/validate-upload-1.1.js'></script>
+<script src=<%= settings.js_base_url %>'/js/validate-upload-1.2.js'></script>
 
 <%= erb :header, layout: false, locals: {user: user} %>
 
@@ -20,7 +20,8 @@
               </div>
               <div id='getter-section'>
                 <p>Step 1: Select MICCA input file:</p>
-                <input id='input-file' type='file' onchange='onChangeHandler(this.files)'>
+                <input id='input-file' type='file' onchange='onChangeHandler(this)'>
+                <div id='input-status'></div>
                 <hr/>
               </div>
               <div id='output-section'>

@@ -114,18 +114,27 @@ function resetAllOutputs(){
   confirmButton.disabled = true;
 }
 
-function onChangeHandler(files){
-  console.log("file changed");
+function onChangeHandler(input){
+  console.log('file changed');
+  let file = input.files[0];
+  let statusElement = document.getElementById('input-status');
+  let now = new Date();
+
+  // Provide some user facing change
+  statusElement.innerHTML = 'processing ' + file.name + ' started: ' + now.toTimeString();
   resetAllOutputs();
 
   // Read file and update DOM
-  let file = files[0];
   try{
     let reader = new FileReader();
     // Define what action to take upon loading input file
     reader.onload = function(e) { processData(reader.result); }
-    // Do the read
-    reader.readAsText(file);        
+    // Do the read.  Waiting for DOM to update.
+    setTimeout(function(){reader.readAsText(file)}, 1500);
   }
   catch(err){ console.log(err); }
+
+  // Reset the input so same file can be selected twice.
+  input.value = null;
+  return false;
 }
