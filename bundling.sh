@@ -21,7 +21,7 @@ bundle install
 # Discard the cache
 rm -rf ../vendor/bundle/ruby/2.5.0/cache
 
-# Re-arrange the path so it works with layers.
+# Re-arrange the path so it matches expectation of AWS Lambda Layers.
 #  to vendor/bundle/ruby/gems/2.5.0
 mkdir ../vendor/bundle/ruby/gems
 mv ../vendor/bundle/ruby/2.5.0 ../vendor/bundle/ruby/gems
