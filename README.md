@@ -76,9 +76,49 @@ aws cognito-idp admin-create-user \
 
 ### List Users
 ```sh
-aws cognito-idp list-user \
+aws cognito-idp list-users \
   --user-pool-id us-east-1_eXamPLE 
 ``` 
+
+### Resend User Invite
+
+#### For admin-created users
+Run the create user command again with the RESEND message action.
+```sh
+aws cognito-idp admin-create-user \
+  --user-pool-id us-east-1_eXamPLE \
+  --username user@example.com \
+  --message-action "RESEND"
+```
+
+#### For non-admin-created users
+A bit of ruby code to calculate the HMAC for the API call.
+```ruby
+#!/usr/bin/env ruby
+
+require 'openssl'
+require 'base64'
+
+client_id = "1234exampleclientid" 
+client_secret = "examplecl13nts3cr3tstring" 
+username="alice@example.com" 
+data = username + client_id
+digest = OpenSSL::Digest.new('sha256')
+
+hmac = Base64.strict_encode64(OpenSSL::HMAC.digest(digest, client_secret, data))
+
+puts hmac
+```
+
+Run the API command to resend the confirmation
+
+```sh
+EMAIL="alice@example.com" \
+CLIENT_ID="us-east-1_eXamPLE" \
+CLIENT_SECRET="ex4mpleS3CR3T" \
+SECRET_HASH="abcdefg1234ABDEFG123345examplehmac12345678=" \
+aws cognito-idp resend-confirmation-code --client-id $CLIENT_ID --username $EMAIL --secret-hash "${SECRET_HASH}"
+```
 
 ## Updating the external users stack
 Make edits to the template, the fire up the aws cli
