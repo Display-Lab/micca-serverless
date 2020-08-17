@@ -11,21 +11,14 @@
         </div>
         <ul class="main-nav">
           <li class="mx-4">
-            <a  class="nav-links" href="https://micca.report">Home</a>
+            <a  class="nav-links" href="https://micca.report/validate.html">Validate data</a>
           </li>
-          <% if user %>
           <li class="mx-4">
-            <a  class="nav-links" href="/dashboard">Dashboard</a>
+            <a  class="nav-links" href="https://larc.micca.report/dashboard">Dashboard</a>
           </li>
-          <li>
-            <a href="/logout" style="height: auto;" class="btn btn-lg btn-outline py-2">Sign Out</a>
+          <li class="mx-4">
+            <a  class="nav-links" href="https://larc.micca.report/submit">Submit data</a>
           </li>
-          <% else %>
-          <li>
-            <a href="/auth/cognito-idp" style="height: auto;" class="btn btn-lg btn-outline py-2">Sign In</a>
-          </li>
-          <% end %>
-
         </ul>
       </nav>
       <header class="container grid-xl landing-header">

@@ -78,11 +78,20 @@ class SinApp < Sinatra::Base
   ##################################
   # Dashboard & Upload
   ##################################
+
+  # Provide valid endpoint for submitting data.
+  #   Redirect to dashboard in the meantime.
+  get '/submit' do
+    if session[:auth]
+      redirect '/dashboard'
+    else
+      redirect '/auth/cognito-idp'
+    end
+  end
+
   get '/dashboard' do
-    redirect '/' unless session[:auth]
-
+    redirect '/auth/cognito-idp' unless session[:auth]
     user = get_user(session)
-
     erb :dashboard, layout: true, locals: {user: user}
   end
 
