@@ -128,7 +128,8 @@ Make edits to the template, the fire up the aws cli
 aws cloudformation describe-stacks
 
 # Create change set
-CHNG_SET_NAME=MU$(date %Y%m%dT%H%M)
+CHNG_SET_NAME=MU$(date +%Y%m%dT%H%M)
+
 aws cloudformation create-change-set --stack-name arn:of:the:stack \
   --change-set-name ${CHNG_SET_NAME} --template-body file://ext-user-pool.yaml
 
