@@ -68,11 +68,19 @@ def handler(event:, context:)
     # Response from Rack must have status, headers and body
     status, headers, body = $app.call env
 
-    # body is an array. We combine all the items to a single string
-    body_content = ""
+    # switch on the header mime-type (API Gateway only)
+    if headers["Content-Type"] == Rack::Mime.mime_type(".pdf")
+      # Assume body is IO of some sort. Read & base64 encode
+      body_content = Base64.encode64(body.read)
+      is_base64_encoded = true
+    else
+      # Assume body is an array. We combine all the items to a single string
+      body_content = ""
 
-    body.each do |item|
-      body_content += item.to_s
+      body.each do |item|
+        body_content += item.to_s
+      end
+      is_base64_encoded = false
     end
 
     # We return the structure required by AWS API Gateway since we integrate with it
@@ -80,12 +88,9 @@ def handler(event:, context:)
     response = {
       'statusCode' => status,
       'headers' => headers,
-      'body' => body_content
+      'body' => body_content,
+      'isBase64Encoded' => is_base64_encoded
     }
-    if event['requestContext'].has_key?('elb')
-      # Required if we use Application Load Balancer instead of API Gateway
-      response['isBase64Encoded'] = false
-    end
   rescue Exception => exception
     # If there is _any_ exception, we return a 500 error with an error message
     response = {
