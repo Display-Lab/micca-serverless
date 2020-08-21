@@ -27,7 +27,7 @@ use Rack::Session::Cookie,
   :domain => ENV['DOMAIN'],
   :key => 'rack.session',
   :path => '/',
-  :expire_after => 3600
+  :expire_after => 3500
 
 use OmniAuth::Strategies::CognitoIdP,
   ENV['CLIENT_ID'],

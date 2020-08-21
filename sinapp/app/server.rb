@@ -6,8 +6,11 @@ require 'aws-record'
 require 'aws-sdk-s3'
 require 'pp'
 require 'date'  
+require 'base64'
 
 require_relative 'data_manip.rb'
+
+require 'pry'
 
 class SinApp < Sinatra::Base
   configure :production, :development do
@@ -20,8 +23,10 @@ class SinApp < Sinatra::Base
   # Use local js files when not in production
   if( ENV['RACK_ENV'] == 'local')
     set :js_base_url, ""
+    set :base_url, ""
   else
     set :js_base_url, "https://assets.micca.report"
+    set :base_url, "https://larc.micca.report"
   end
 
   # Consideration for running via AWS Lambda
@@ -57,22 +62,166 @@ class SinApp < Sinatra::Base
       Aws::S3::Client.new(region: ENV['AWS_REGION'])
     end
 
+    def link_url(path)
+      "#{settings.base_url}#{path}"
+    end
+
+    def is_authed?(session)
+      expiry = session.dig "auth", "credentials", "expires_at"
+
+      if expiry.nil?
+        return false
+      else
+        return Time.now.to_i < expiry
+      end
+    end
+
+    def get_user(session)
+      begin
+        user = cognito_idp_client.get_user(access_token: session[:auth][:credentials][:token])
+      rescue Aws::CognitoIdentityProvider::Errors::NotAuthorizedException => ex
+        session.clear
+        halt 403
+      end
+
+      return user
+    end
+
+    def get_user_email(session)
+      session&.dig('auth', 'extra', 'raw_info', 'email')
+    end
+
+    def get_ascribee(session)
+      user = get_user session
+      site_attr = user.user_attributes.select{|attr| attr["name"] == "custom:site"}.first
+      # Ascribee is the site name
+      site_attr['value']
+    end
+
+    def verify_ascribee_site(session, site)
+      # Verify ascribee matches report site
+      ascribee = get_ascribee(session)
+      ascribee_dashed = ascribee.sub(/ /,'-')
+
+      unless ascribee_dashed == site
+        halt 403
+      end
+    end
+
+    def get_s3_obj(key)
+      s3 = Aws::S3::Resource.new
+      obj = s3.bucket(ENV['BUCKET']).object(key)
+
+      unless obj.exists?
+        halt 404
+      end
+
+      return obj
+    end
+
   end
 
-  #####################
-  # Utility Functions #
-  #####################
+  ############
+  # Testing  #
+  ############
+  get '/reports/:site/:report_name' do
+    redirect '/auth/cognito-idp' unless is_authed?(session)
 
-  def get_user(session)
-    session&.dig('auth', 'extra', 'raw_info', 'email')
+    site = params["site"]
+    report_name = params["report_name"]
+
+    # Halt if site does not match session site.
+    verify_ascribee_site(session, site)
+
+    # Retrieve object or throw 404
+    src = "reports/#{site}/#{report_name}"
+    obj = get_s3_obj src
+
+    content_type :pdf
+    attachment File.basename(src)
+
+    # Return StringIO
+    obj.get.body
+  end
+
+  get '/data/:site/:dataset' do
+    redirect '/auth/cognito-idp' unless is_authed?(session)
+
+    site = params["site"]
+    dataset = params["dataset"]
+
+    # Halt if site does not match session site.
+    verify_ascribee_site(session, site)
+
+    # Retrieve object or throw 404
+    src = "data/#{site}/#{dataset}"
+    obj = get_s3_obj src
+
+    content_type :csv
+    attachment File.basename(src)
+
+    # Return StringIO
+    obj.get.body
+  end
+
+  # Prototype dashboard
+  get '/proto' do
+    redirect '/auth/cognito-idp' unless is_authed?(session)
+
+    # Ascribee for report lookup
+    ascribee = get_ascribee(session)
+    ascribee_dashed = ascribee.sub(/ /,'-')
+
+    # List of datasets and reports keys
+    s3 = Aws::S3::Resource.new
+    reports = s3.bucket(ENV['BUCKET'])
+      .objects({prefix: "reports/#{ascribee_dashed}/"})
+      .sort_by(&:last_modified)
+      .first(4)
+      .collect(&:key)
+
+    datasets = s3.bucket(ENV['BUCKET'])
+      .objects({prefix: "data/#{ascribee_dashed}/"})
+      .sort_by(&:last_modified)
+      .first(4)
+      .collect(&:key)
+
+    erb :proto, layout: true, locals: {reports: reports, datasets: datasets}
+
+  end
+
+  ##################################
+  # Error pages
+  ##################################
+
+  not_found do
+    error = env['sinatra.error']
+    status = error&.http_status || response&.status
+    message = error&.message || "#{env['REQUEST_METHOD']} #{env['REQUEST_PATH']}"
+    erb :error, layout: true, locals: {http_status: status, message: message,
+                                       big_title: "Not Found"}
+  end
+
+  error 403 do
+    error = env['sinatra.error']
+    status = error&.http_status || response&.status
+    message = error&.message || "#{env['REQUEST_METHOD']} #{env['REQUEST_PATH']}"
+    erb :error, layout: true, locals: {http_status: status, message: message,
+                                       big_title: "Forbidden"}
+  end
+
+  error do
+    error = env['sinatra.error']
+    status = error&.http_status || response&.status
+    message = error&.message || "#{env['REQUEST_METHOD']} #{env['REQUEST_PATH']}"
+    erb :error, layout: true, locals: {http_status: status, message: message}
   end
 
   ##################################
   # Index page
   ##################################
   get '/' do
-    user = get_user(session)
-    erb :index, layout: true, locals: {user: user}
+    erb :index, layout: true
   end
 
   ##################################
@@ -82,7 +231,7 @@ class SinApp < Sinatra::Base
   # Provide valid endpoint for submitting data.
   #   Redirect to dashboard in the meantime.
   get '/submit' do
-    if session[:auth]
+    if is_authed?(session)
       redirect '/dashboard'
     else
       redirect '/auth/cognito-idp'
@@ -90,9 +239,8 @@ class SinApp < Sinatra::Base
   end
 
   get '/dashboard' do
-    redirect '/auth/cognito-idp' unless session[:auth]
-    user = get_user(session)
-    erb :dashboard, layout: true, locals: {user: user}
+    redirect '/auth/cognito-idp' unless is_authed?(session)
+    erb :dashboard, layout: true
   end
 
   # Target for XHR request from dashboard JS
@@ -100,14 +248,14 @@ class SinApp < Sinatra::Base
     content_type :json
     file = params[:file][:tempfile]
 
-    if session[:auth]
+    if is_authed?(session)
       # Verify header
       unless DataManip.verify_header(file)
         return [200, {message: "Aggregate file header validation failed."}.to_json]
       end
 
       # Append ascribee
-      user = cognito_idp_client.get_user(access_token: session[:auth][:credentials][:token])
+      user = get_user(session)
       site_attr = user.user_attributes.select{|attr| attr["name"] == "custom:site"}.first
       ascribee = site_attr['value']
       updated_data = DataManip.append_ascribee(file, ascribee)
@@ -123,7 +271,7 @@ class SinApp < Sinatra::Base
 
       return [200, {message: "Data stored", location: obj_key}.to_json]
     else
-      return [401, {message: "Unauthorized"}.to_json]
+      return [403, {message: "Forbidden"}.to_json]
     end
   end
 

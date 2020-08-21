@@ -1,0 +1,53 @@
+<% big_title = "MICCA Reports Dashboard" %>
+<%= erb :header, layout: false, locals: { big_title: big_title} %>
+
+<div class="container-full">
+  <div class="container grid-xl">
+    <div class="columns negative-m-s">
+      
+      <div class="column col-6 col-md-6 col-sm-12">
+        <div class="card">
+          <div class="card-body text-center my-4">
+            <div id='intro-section'>
+              <h5 class="text-bold">Datasets</h5>
+              <hr/>
+            </div>
+            <div id='dataset-list'>
+              <ul>
+                <% for dataset in datasets do %>
+                  <li><a href=<%= link_url(dataset) %>><%= dataset %></a></li>
+                <% end %>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="column col-6 col-md-6 col-sm-12">
+        <div class="card">
+          <div class="card-body text-center my-4">
+            <div id='intro-section'>
+              <h5 class="text-bold">Reports</h5>
+              <hr/>
+            </div>
+            <div id='report-list'>
+              <ul>
+                <% for report in reports do %>
+                  <li><a href=<%= link_url(report) %>><%= report %></a></li>
+                <% end %>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="column col-4 col-sm-12 p-8 mb-8 col-mx-auto">
+        <h5>Help Desk</h5>
+        <p>Report an issue via GitHub, or email us at displaylab@umich.edu</p>
+        <a href="https://github.com/Display-Lab/micca-static/issues">Report an issue <i class='uil uil-arrow-right arrow-hover'></i></a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%= erb :footer, :layout => false %>
