@@ -10,8 +10,6 @@ require 'base64'
 
 require_relative 'data_manip.rb'
 
-require 'pry'
-
 class SinApp < Sinatra::Base
   configure :production, :development do
     enable :logging
