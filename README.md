@@ -1,10 +1,6 @@
 # Serverless Sinatra App
 
-Base project is the deployment wrapper around a sinatra application in the sinapp dir
-
-Plan is to:
-1. Develop the deployment and wiring strategy in this project.
-2. Develop the application under the sinapp directory.
+Base project is the AWS serverless infrastructure supporting a Sinatra application in the sinapp dir.
 
 ## My notes
 
