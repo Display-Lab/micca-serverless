@@ -162,32 +162,6 @@ class SinApp < Sinatra::Base
     obj.get.body
   end
 
-  # Prototype dashboard
-  get '/proto' do
-    redirect '/auth/cognito-idp' unless is_authed?(session)
-
-    # Ascribee for report lookup
-    ascribee = get_ascribee(session)
-    ascribee_dashed = ascribee.sub(/ /,'-')
-
-    # List of datasets and reports keys
-    s3 = Aws::S3::Resource.new
-    reports = s3.bucket(ENV['BUCKET'])
-      .objects({prefix: "reports/#{ascribee_dashed}/"})
-      .sort_by(&:last_modified)
-      .first(4)
-      .collect(&:key)
-
-    datasets = s3.bucket(ENV['BUCKET'])
-      .objects({prefix: "data/#{ascribee_dashed}/"})
-      .sort_by(&:last_modified)
-      .first(4)
-      .collect(&:key)
-
-    erb :proto, layout: true, locals: {reports: reports, datasets: datasets}
-
-  end
-
   ##################################
   # Error pages
   ##################################
@@ -226,19 +200,9 @@ class SinApp < Sinatra::Base
   # Dashboard & Upload
   ##################################
 
-  # Provide valid endpoint for submitting data.
-  #   Redirect to dashboard in the meantime.
   get '/submit' do
-    if is_authed?(session)
-      redirect '/dashboard'
-    else
-      redirect '/auth/cognito-idp'
-    end
-  end
-
-  get '/dashboard' do
     redirect '/auth/cognito-idp' unless is_authed?(session)
-    erb :dashboard, layout: true
+    erb :submit, layout: true
   end
 
   # Target for XHR request from dashboard JS
@@ -273,7 +237,29 @@ class SinApp < Sinatra::Base
     end
   end
 
+  get '/dashboard' do
+    redirect '/auth/cognito-idp' unless is_authed?(session)
 
+    # Ascribee for report lookup
+    ascribee = get_ascribee(session)
+    ascribee_dashed = ascribee.sub(/ /,'-')
+
+    # List of datasets and reports keys
+    s3 = Aws::S3::Resource.new
+    reports = s3.bucket(ENV['BUCKET'])
+      .objects({prefix: "reports/#{ascribee_dashed}/"})
+      .sort_by(&:last_modified)
+      .first(4)
+      .collect(&:key)
+
+    datasets = s3.bucket(ENV['BUCKET'])
+      .objects({prefix: "data/#{ascribee_dashed}/"})
+      .sort_by(&:last_modified)
+      .first(4)
+      .collect(&:key)
+
+    erb :dashboard, layout: true, locals: {reports: reports, datasets: datasets}
+  end
 
   #######################
   # Login using Cognito #
