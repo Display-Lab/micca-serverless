@@ -1,14 +1,13 @@
 <script src='<%= "#{settings.js_base_url}/js/micca-0.6.1.js" %>' ></script>
 <script src='<%= "#{settings.js_base_url}/js/validate-upload-1.2.js" %>'> </script>
 
-<%= erb :header, layout: false %>
+<% big_title = "Submit Site Data" %>
+<%= erb :header, layout: false, locals: { big_title: big_title} %>
 
 <div class="container-full">
   <div class="container grid-xl">
-    <div class="columns negative-m-xl">
-      <div class="column col-12">
-        <h2 class="text-light text-bold text-center">Submit Your Data</h2>
-      </div>
+    <div class="columns negative-m-s">
+
       <div class="column col-12">
         <div class="card">
           <div class="card-body">
@@ -39,6 +38,7 @@
           </div>
         </div>
       </div>
+
       <div class="column col-4 col-sm-12 p-8 mb-8 col-mx-auto">
         <h5>Help Desk</h5>
         <p>Report an issue via GitHub, or email us at displaylab@umich.edu</p>
