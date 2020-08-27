@@ -63,7 +63,6 @@ def handler(event:, context:)
     env[header] = value.to_s
   end
 
-  # This prevents serving out images and minified js
   begin
     # Response from Rack must have status, headers and body
     status, headers, body = $app.call env
