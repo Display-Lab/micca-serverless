@@ -121,6 +121,9 @@ Resources:
         Route53:
           HostedZoneId: !Ref ZoneId
           EvaluateTargetHealth: false
+      BinaryMediaTypes:
+        - 'application~1pdf'
+        - '*~1*'
       DefinitionBody:
         swagger: '2.0'
         basePath: '/basepathignored'
@@ -145,6 +148,7 @@ Resources:
                 passthroughBehavior: "when_no_match"
                 httpMethod: POST
                 type: "aws_proxy"
+                contentHandling: CONVERT_TO_BINARY
 
   ConfigLambdaPermission:
     Type: "AWS::Lambda::Permission"
