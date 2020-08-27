@@ -15,7 +15,7 @@
             <div id='dataset-list'>
               <ul>
                 <% for dataset in datasets do %>
-                  <li><a href=<%= link_url(dataset) %>><%= dataset %></a></li>
+                  <li><a href=<%= link_bucket_path(dataset) %>><%= dataset %></a></li>
                 <% end %>
               </ul>
             </div>
@@ -33,7 +33,7 @@
             <div id='report-list'>
               <ul>
                 <% for report in reports do %>
-                  <li><a href=<%= link_url(report) %>><%= report %></a></li>
+                  <li><a href=<%= link_bucket_path(report) %>><%= report %></a></li>
                 <% end %>
               </ul>
             </div>

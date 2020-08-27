@@ -60,8 +60,8 @@ class SinApp < Sinatra::Base
       Aws::S3::Client.new(region: ENV['AWS_REGION'])
     end
 
-    def link_url(path)
-      "#{settings.base_url}#{path}"
+    def link_bucket_path(path)
+      "#{settings.base_url}/#{path}"
     end
 
     def is_authed?(session)
@@ -119,9 +119,9 @@ class SinApp < Sinatra::Base
 
   end
 
-  ############
-  # Testing  #
-  ############
+  ##################################
+  # Retrieve Reports & Data  
+  ##################################
   get '/reports/:site/:report_name' do
     redirect '/auth/cognito-idp' unless is_authed?(session)
 
