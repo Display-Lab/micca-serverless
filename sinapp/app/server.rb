@@ -99,7 +99,7 @@ class SinApp < Sinatra::Base
     def verify_ascribee_site(session, site)
       # Verify ascribee matches report site
       ascribee = get_ascribee(session)
-      ascribee_dashed = ascribee.sub(/ /,'-')
+      ascribee_dashed = ascribee.gsub(/ /,'-')
 
       unless ascribee_dashed == site
         halt 403
@@ -223,7 +223,7 @@ class SinApp < Sinatra::Base
       updated_data = DataManip.append_ascribee(file, ascribee)
 
       # Write file to S3
-      asribee_dashed = ascribee.sub(/ /,'-')
+      asribee_dashed = ascribee.gsub(/ /,'-')
       obj_key = "data/#{asribee_dashed}/#{Time.now.iso8601}_maptg.csv"
 
       s3 = Aws::S3::Resource.new
@@ -242,7 +242,7 @@ class SinApp < Sinatra::Base
 
     # Ascribee for report lookup
     ascribee = get_ascribee(session)
-    ascribee_dashed = ascribee.sub(/ /,'-')
+    ascribee_dashed = ascribee.gsub(/ /,'-')
 
     # List of datasets and reports keys
     s3 = Aws::S3::Resource.new
