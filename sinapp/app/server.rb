@@ -249,14 +249,16 @@ class SinApp < Sinatra::Base
     reports = s3.bucket(ENV['BUCKET'])
       .objects({prefix: "reports/#{ascribee_dashed}/"})
       .sort_by(&:last_modified)
-      .first(4)
+      .last(4)
       .collect(&:key)
+      .reverse
 
     datasets = s3.bucket(ENV['BUCKET'])
       .objects({prefix: "data/#{ascribee_dashed}/"})
       .sort_by(&:last_modified)
-      .first(4)
+      .last(4)
       .collect(&:key)
+      .reverse
 
     erb :dashboard, layout: true, locals: {reports: reports, datasets: datasets}
   end
