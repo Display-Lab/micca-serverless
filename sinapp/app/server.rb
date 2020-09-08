@@ -296,8 +296,6 @@ class SinApp < Sinatra::Base
       <body>
         <h1>Auth Failed</h1>
         <h2> <a href="/">Home</a> </h2>
-        <h2> Session </h2>
-        <pre>#{session&.pretty_inspect}</pre>
       </body>
     HTML
   end
