@@ -1,3 +1,5 @@
+# Modifications copyright (C) 2020 Regents of the Univeristy of Michigan
+
 require 'json'
 require 'omniauth-cognito-idp'
 require 'sinatra/base'

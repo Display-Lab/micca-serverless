@@ -1,3 +1,5 @@
+# Modifications copyright (C) 2020 Regents of the Univeristy of Michigan
+
 require 'rack'
 require 'rack/contrib'
 require 'rack/utils'
