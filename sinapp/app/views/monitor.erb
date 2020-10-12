@@ -1,0 +1,70 @@
+<% big_title = "MICCA Monitoring" %>
+<%= erb :header, layout: false, locals: { big_title: big_title} %>
+
+<div class="container-full">
+  <div class="container grid-xl">
+    <div class="columns negative-m-s">
+      
+      <div class="column col-6 col-md-6 col-sm-12">
+        <div class="card">
+          <div class="card-body text-center my-4">
+            <div id='intro-section'>
+              <h5 class="text-bold">Datasets</h5>
+              <hr/>
+            </div>
+            <div id='dataset-list'>
+              <table>
+                <thead> 
+                  <tr>
+                    <th>Ascribee</th>
+                    <th>Filename</th>
+                  </tr>
+                </thead>
+                <tbody>
+                <% for dataset in datasets do %>
+                  <tr>
+                    <td><%= dataset[:ascribee] %></td>
+                    <td><a href=<%= link_bucket_path(dataset[:path]) %>><%= dataset[:filename] %></a></td>
+                  </tr>
+                <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="column col-6 col-md-6 col-sm-12">
+        <div class="card">
+          <div class="card-body text-center my-4">
+            <div id='intro-section'>
+              <h5 class="text-bold">Reports</h5>
+              <hr/>
+            </div>
+            <div id='report-list'>
+              <table>
+                <thead> 
+                  <tr>
+                    <th>Ascribee</th>
+                    <th>Filename</th>
+                  </tr>
+                </thead>
+                <tbody>
+                <% for report in reports do %>
+                  <tr>
+                    <td><%= report[:ascribee] %></td>
+                    <td><a href=<%= link_bucket_path(report[:path]) %>><%= report[:filename] %></a></td>
+                  </tr>
+                <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<%= erb :footer, :layout => false %>

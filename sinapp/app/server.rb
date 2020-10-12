@@ -119,6 +119,11 @@ class SinApp < Sinatra::Base
       return obj
     end
 
+    def parse_s3_path(path)
+      parts = path.split('/')
+      {type: parts[0], ascribee: parts[1], filename: parts[2], path: path}
+    end
+
   end
 
   ##################################
@@ -263,6 +268,32 @@ class SinApp < Sinatra::Base
       .reverse
 
     erb :dashboard, layout: true, locals: {reports: reports, datasets: datasets}
+  end
+
+  get '/monitor' do
+    redirect '/auth/cognito-idp' unless is_authed?(session)
+    ascribee = get_ascribee(session)
+    redirect '/dashboard' unless ascribee == "Display Lab"
+
+    # List of datasets and reports keys
+    s3 = Aws::S3::Resource.new
+    report_hsh = s3.bucket(ENV['BUCKET'])
+      .objects({prefix: "reports/"})
+      .sort_by(&:last_modified)
+      .last(12)
+      .collect(&:key)
+      .reverse
+      .map{|k| parse_s3_path k}
+
+    dataset_hsh = s3.bucket(ENV['BUCKET'])
+      .objects({prefix: "data/"})
+      .sort_by(&:last_modified)
+      .last(12)
+      .collect(&:key)
+      .reverse
+      .map{|k| parse_s3_path k}
+
+    erb :monitor, layout: true, locals: {reports: report_hsh, datasets: dataset_hsh}
   end
 
   #######################
