@@ -98,8 +98,13 @@ class SinApp < Sinatra::Base
       site_attr['value']
     end
 
+    def is_display_lab?(session)
+      ascribee = get_ascribee(session)
+      ascribee_dashed = ascribee.gsub(/ /,'-')
+      return(ascribee_dashed == "Display-Lab")
+    end
+
     def verify_ascribee_site(session, site)
-      # Verify ascribee matches report site
       ascribee = get_ascribee(session)
       ascribee_dashed = ascribee.gsub(/ /,'-')
 
@@ -135,8 +140,11 @@ class SinApp < Sinatra::Base
     site = params["site"]
     report_name = params["report_name"]
 
-    # Halt if site does not match session site.
-    verify_ascribee_site(session, site)
+    
+    # Allow display lab to download any report. Verify all other sites.
+    unless(is_display_lab? session ) 
+      verify_ascribee_site(session, site) 
+    end
 
     # Retrieve object or throw 404
     src = "reports/#{site}/#{report_name}"
@@ -155,8 +163,10 @@ class SinApp < Sinatra::Base
     site = params["site"]
     dataset = params["dataset"]
 
-    # Halt if site does not match session site.
-    verify_ascribee_site(session, site)
+    # Allow display lab to download any report. Verify all other sites.
+    unless(is_display_lab? session ) 
+      verify_ascribee_site(session, site) 
+    end
 
     # Retrieve object or throw 404
     src = "data/#{site}/#{dataset}"
